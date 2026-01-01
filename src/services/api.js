@@ -38,17 +38,14 @@ api.interceptors.response.use(
 // ==================== 认证 API ====================
 
 export const authAPI = {
-  // 登录
-  login: async (email, password) => {
-    const formData = new URLSearchParams();
-    formData.append('username', email);
-    formData.append('password', password);
-    
-    const response = await api.post('/auth/login', formData, {
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    });
-    return response.data;
-  },
+ // 登录
+login: async (email, password) => {
+  const response = await api.post('/auth/login', {
+    email: email,
+    password: password
+  });
+  return response.data;
+},
 
   // 注册
   register: async (userData) => {
