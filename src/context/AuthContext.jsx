@@ -14,9 +14,12 @@ export const AuthProvider = ({ children }) => {
       const token = localStorage.getItem('gtc_token');
       const savedUser = localStorage.getItem('gtc_user');
       
-      if (token && savedUser) {
-        try {
-          setUser(JSON.parse(savedUser));
+     if (token && savedUser && savedUser !== 'undefined') {
+  try {
+    const parsedUser = JSON.parse(savedUser);
+    if (parsedUser) {
+      setUser(parsedUser);
+    }
           // 可选：验证 token 是否有效
           // const currentUser = await authAPI.getCurrentUser();
           // setUser(currentUser);
