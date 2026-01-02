@@ -223,7 +223,7 @@ const DashboardPage = () => {
                 <p className="text-sm text-gray-500">文档扫描引擎</p>
               </div>
               <div className={`w-3 h-3 rounded-full ${
-                aiStatus?.gemini === 'configured' ? 'bg-green-500' : 'bg-gray-300'
+                aiStatus?.gemini?.configured === true ? 'bg-green-500' : 'bg-gray-300'
               }`}></div>
             </div>
 
@@ -237,7 +237,7 @@ const DashboardPage = () => {
                 <p className="text-sm text-gray-500">法律推理引擎</p>
               </div>
               <div className={`w-3 h-3 rounded-full ${
-                aiStatus?.claude === 'configured' ? 'bg-green-500' : 'bg-gray-300'
+                aiStatus?.claude?.configured === true? 'bg-green-500' : 'bg-gray-300'
               }`}></div>
             </div>
 
