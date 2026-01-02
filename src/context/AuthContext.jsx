@@ -34,21 +34,21 @@ export const AuthProvider = ({ children }) => {
     initAuth();
   }, []);
 
-  // 登录
-  const login = async (email, password) => {
-    setError(null);
-    try {
-     const userInfo = { email: email };
-localStorage.setItem('gtc_user', JSON.stringify(userInfo));
-setUser(userInfo);
-return data;
-    } catch (err) {
-      const message = err.response?.data?.detail || '登录失败，请检查邮箱和密码';
-      setError(message);
-      throw new Error(message);
-    }
-  };
-
+ // 登录
+const login = async (email, password) => {
+  setError(null);
+  try {
+    const data = await authAPI.login(email, password);
+    localStorage.setItem('gtc_token', data.access_token);
+    localStorage.setItem('gtc_user', JSON.stringify(data.user));
+    setUser(data.user);
+    return data;
+  } catch (err) {
+    const message = err.response?.data?.detail || '登录失败，请检查邮箱和密码';
+    setError(message);
+    throw new Error(message);
+  }
+};
   // 注册
   const register = async (userData) => {
     setError(null);
