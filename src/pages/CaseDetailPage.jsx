@@ -126,7 +126,7 @@ const CaseDetailPage = () => {
             <ArrowLeft className="w-5 h-5" /> 返回列表
           </button>
           <h1 className="text-2xl font-display font-bold text-gtc-navy">
-            {caseData.title || `案件 #${caseData.id.slice(0, 8)}`}
+            {caseData.title || `案件 #${caseData.id}`}
           </h1>
         </div>
         <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full ${statusConfig.bg}`}>
