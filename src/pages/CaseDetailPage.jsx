@@ -18,6 +18,8 @@ import {
   Calendar,
   Loader2,
   RefreshCw,
+  AlertCircle,
+  Shield,
 } from 'lucide-react';
 
 const CaseDetailPage = () => {
@@ -102,6 +104,82 @@ const CaseDetailPage = () => {
     return configs[status] || configs.pending;
   };
 
+  const getRiskColor = (score) => {
+    if (score >= 7) return { bg: 'bg-red-100', text: 'text-red-700', border: 'border-red-300' };
+    if (score >= 4) return { bg: 'bg-amber-100', text: 'text-amber-700', border: 'border-amber-300' };
+    return { bg: 'bg-green-100', text: 'text-green-700', border: 'border-green-300' };
+  };
+
+  const getSeverityColor = (severity) => {
+    if (severity === 'high') return 'bg-red-100 text-red-700';
+    if (severity === 'medium') return 'bg-amber-100 text-amber-700';
+    return 'bg-green-100 text-green-700';
+  };
+
+  const renderAnalysisResult = (data) => {
+    const riskDetails = data.risk_details || data;
+    const riskScore = riskDetails.risk_score || data.risk_score || 0;
+    const riskLevel = riskDetails.risk_level || data.risk_level || 'unknown';
+    const summary = riskDetails.executive_summary || data.executive_summary || '暂无摘要';
+    const issues = riskDetails.critical_issues || data.critical_issues || [];
+    const riskColor = getRiskColor(riskScore);
+
+    return (
+      <div className="space-y-4">
+        <div className={`rounded-xl p-4 border ${riskColor.bg} ${riskColor.border}`}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Shield className={`w-8 h-8 ${riskColor.text}`} />
+              <div>
+                <p className="text-sm text-gray-600">风险评分</p>
+                <p className={`text-3xl font-bold ${riskColor.text}`}>{riskScore}/10</p>
+              </div>
+            </div>
+            <span className={`px-3 py-1 rounded-full text-sm font-medium ${getSeverityColor(riskLevel)}`}>
+              {riskLevel === 'high' ? '高风险' : riskLevel === 'medium' ? '中等风险' : '低风险'}
+            </span>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl p-4 border border-gray-200">
+          <h4 className="font-medium text-gtc-navy mb-2 flex items-center gap-2">
+            <FileText className="w-4 h-4" /> 风险摘要
+          </h4>
+          <p className="text-sm text-gray-700 leading-relaxed">{summary}</p>
+        </div>
+
+        {issues.length > 0 && (
+          <div className="bg-white rounded-xl p-4 border border-gray-200">
+            <h4 className="font-medium text-gtc-navy mb-3 flex items-center gap-2">
+              <AlertCircle className="w-4 h-4" /> 关键问题 ({issues.length})
+            </h4>
+            <div className="space-y-3">
+              {issues.map((issue, index) => (
+                <div key={index} className="bg-gray-50 rounded-lg p-3">
+                  <div className="flex items-start justify-between mb-2">
+                    <p className="font-medium text-gray-800 text-sm">{issue.issue}</p>
+                    <span className={`px-2 py-0.5 rounded text-xs font-medium ${getSeverityColor(issue.severity)}`}>
+                      {issue.severity === 'high' ? '高' : issue.severity === 'medium' ? '中' : '低'}
+                    </span>
+                  </div>
+                  {issue.evidence && (
+                    <p className="text-xs text-gray-600 mb-1"><span className="font-medium">证据:</span> {issue.evidence}</p>
+                  )}
+                  {issue.impact && (
+                    <p className="text-xs text-gray-600 mb-1"><span className="font-medium">影响:</span> {issue.impact}</p>
+                  )}
+                  {issue.recommendation && (
+                    <p className="text-xs text-blue-600"><span className="font-medium">建议:</span> {issue.recommendation}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -119,7 +197,6 @@ const CaseDetailPage = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-gray-500 hover:text-gtc-navy mb-2">
@@ -135,7 +212,6 @@ const CaseDetailPage = () => {
         </div>
       </div>
 
-      {/* Tabs */}
       <div className="bg-white rounded-xl shadow-sm">
         <div className="border-b border-gray-200 flex gap-8 px-6">
           {['info', 'files', 'ai'].map((tab) => (
@@ -205,15 +281,20 @@ const CaseDetailPage = () => {
                 </button>
               </div>
               {aiResult && (
-                <div className={`rounded-xl p-4 ${aiResult.type === 'error' ? 'bg-red-50 text-red-600' : 'bg-gray-50'}`}>
+                <div className={`rounded-xl ${aiResult.type === 'error' ? 'bg-red-50 text-red-600 p-4' : ''}`}>
                   {aiResult.type === 'error' ? (
                     aiResult.message
+                  ) : aiResult.type === 'analysis' ? (
+                    renderAnalysisResult(aiResult.data)
                   ) : aiResult.type === 'petition' ? (
-                    <div className="prose max-w-none">
-                      <pre className="text-sm whitespace-pre-wrap font-sans leading-relaxed">{aiResult.data.petition_text}</pre>
+                    <div className="bg-gray-50 rounded-xl p-4">
+                      <h4 className="font-medium text-gtc-navy mb-3 flex items-center gap-2">
+                        <Sparkles className="w-4 h-4" /> 申诉书草稿
+                      </h4>
+                      <pre className="text-sm whitespace-pre-wrap font-sans leading-relaxed text-gray-700">{aiResult.data.petition_text}</pre>
                     </div>
                   ) : (
-                    <pre className="text-sm whitespace-pre-wrap">{JSON.stringify(aiResult.data, null, 2)}</pre>
+                    <pre className="text-sm whitespace-pre-wrap p-4 bg-gray-50 rounded-xl">{JSON.stringify(aiResult.data, null, 2)}</pre>
                   )}
                 </div>
               )}
