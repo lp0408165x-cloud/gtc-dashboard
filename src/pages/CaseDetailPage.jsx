@@ -206,7 +206,13 @@ const CaseDetailPage = () => {
               </div>
               {aiResult && (
                 <div className={`rounded-xl p-4 ${aiResult.type === 'error' ? 'bg-red-50 text-red-600' : 'bg-gray-50'}`}>
-                  {aiResult.type === 'error' ? aiResult.message : (
+                  {aiResult.type === 'error' ? (
+                    aiResult.message
+                  ) : aiResult.type === 'petition' ? (
+                    <div className="prose max-w-none">
+                      <pre className="text-sm whitespace-pre-wrap font-sans leading-relaxed">{aiResult.data.petition_text}</pre>
+                    </div>
+                  ) : (
                     <pre className="text-sm whitespace-pre-wrap">{JSON.stringify(aiResult.data, null, 2)}</pre>
                   )}
                 </div>
