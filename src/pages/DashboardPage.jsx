@@ -178,7 +178,7 @@ const DashboardPage = () => {
                     </div>
                     <div>
                       <p className="font-medium text-gtc-navy">
-                        {caseItem.title || `案件 #${caseItem.id.slice(0, 8)}`}
+                       {caseItem.title || `案件 #${caseItem.id}`}
                       </p>
                       <p className="text-sm text-gray-500">
                         {new Date(caseItem.created_at).toLocaleDateString('zh-CN')}
