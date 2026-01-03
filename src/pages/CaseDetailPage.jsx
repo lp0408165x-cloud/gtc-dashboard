@@ -291,7 +291,7 @@ const CaseDetailPage = () => {
                       <h4 className="font-medium text-gtc-navy mb-3 flex items-center gap-2">
                         <Sparkles className="w-4 h-4" /> 申诉书草稿
                       </h4>
-                      <pre className="text-sm whitespace-pre-wrap font-sans leading-relaxed text-gray-700">{aiResult.data.petition_text}</pre>
+                      <pre className="text-sm whitespace-pre-wrap font-sans leading-relaxed text-gray-700">{aiResult.data.petition_draft}</pre>
                     </div>
                   ) : (
                     <pre className="text-sm whitespace-pre-wrap p-4 bg-gray-50 rounded-xl">{JSON.stringify(aiResult.data, null, 2)}</pre>
