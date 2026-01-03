@@ -73,6 +73,8 @@ const CaseDetailPage = () => {
     try {
       const result = await aiAPI.analyzeDocument(id, 'risk_scan');
       setAiResult({ type: 'analysis', data: result });
+      // 刷新案件数据以获取保存的结果
+      await fetchCaseData();
     } catch (error) {
       setAiResult({ type: 'error', message: '分析失败，请稍后重试' });
     } finally {
@@ -86,6 +88,8 @@ const CaseDetailPage = () => {
     try {
       const result = await aiAPI.generatePetition(id);
       setAiResult({ type: 'petition', data: result });
+      // 刷新案件数据以获取保存的结果
+      await fetchCaseData();
     } catch (error) {
       setAiResult({ type: 'error', message: '生成失败，请稍后重试' });
     } finally {
@@ -100,6 +104,7 @@ const CaseDetailPage = () => {
       submitted: { label: '已提交CBP', icon: Upload, color: 'text-purple-600', bg: 'bg-purple-100' },
       approved: { label: '合规通过', icon: CheckCircle, color: 'text-green-600', bg: 'bg-green-100' },
       rejected: { label: '已拒绝', icon: AlertTriangle, color: 'text-red-600', bg: 'bg-red-100' },
+      analyzed: { label: '已分析', icon: Brain, color: 'text-indigo-600', bg: 'bg-indigo-100' },
     };
     return configs[status] || configs.pending;
   };
@@ -111,7 +116,7 @@ const CaseDetailPage = () => {
   };
 
   const getSeverityColor = (severity) => {
-    if (severity === 'high') return 'bg-red-100 text-red-700';
+    if (severity === 'high' || severity === 'critical') return 'bg-red-100 text-red-700';
     if (severity === 'medium') return 'bg-amber-100 text-amber-700';
     return 'bg-green-100 text-green-700';
   };
@@ -120,7 +125,7 @@ const CaseDetailPage = () => {
     const riskDetails = data.risk_details || data;
     const riskScore = riskDetails.risk_score || data.risk_score || 0;
     const riskLevel = riskDetails.risk_level || data.risk_level || 'unknown';
-    const summary = riskDetails.executive_summary || data.executive_summary || '暂无摘要';
+    const summary = riskDetails.executive_summary || data.executive_summary || data.risk_analysis || '暂无摘要';
     const issues = riskDetails.critical_issues || data.critical_issues || [];
     const riskColor = getRiskColor(riskScore);
 
@@ -159,7 +164,7 @@ const CaseDetailPage = () => {
                   <div className="flex items-start justify-between mb-2">
                     <p className="font-medium text-gray-800 text-sm">{issue.issue}</p>
                     <span className={`px-2 py-0.5 rounded text-xs font-medium ${getSeverityColor(issue.severity)}`}>
-                      {issue.severity === 'high' ? '高' : issue.severity === 'medium' ? '中' : '低'}
+                      {issue.severity === 'high' || issue.severity === 'critical' ? '高' : issue.severity === 'medium' ? '中' : '低'}
                     </span>
                   </div>
                   {issue.evidence && (
@@ -176,6 +181,52 @@ const CaseDetailPage = () => {
             </div>
           </div>
         )}
+      </div>
+    );
+  };
+
+  // 渲染已保存的风险分析
+  const renderSavedRiskAnalysis = () => {
+    if (!caseData?.risk_score && !caseData?.risk_analysis) return null;
+    
+    const riskScore = caseData.risk_score || 0;
+    const riskColor = getRiskColor(riskScore);
+    
+    return (
+      <div className="space-y-4 mb-6">
+        <h4 className="font-medium text-gtc-navy flex items-center gap-2">
+          <Brain className="w-4 h-4" /> 已保存的风险分析
+        </h4>
+        <div className={`rounded-xl p-4 border ${riskColor.bg} ${riskColor.border}`}>
+          <div className="flex items-center gap-3">
+            <Shield className={`w-8 h-8 ${riskColor.text}`} />
+            <div>
+              <p className="text-sm text-gray-600">风险评分</p>
+              <p className={`text-3xl font-bold ${riskColor.text}`}>{riskScore}/10</p>
+            </div>
+          </div>
+        </div>
+        {caseData.risk_analysis && (
+          <div className="bg-white rounded-xl p-4 border border-gray-200">
+            <p className="text-sm text-gray-700 leading-relaxed">{caseData.risk_analysis}</p>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // 渲染已保存的申诉书
+  const renderSavedPetition = () => {
+    if (!caseData?.petition_draft) return null;
+    
+    return (
+      <div className="space-y-4 mb-6">
+        <h4 className="font-medium text-gtc-navy flex items-center gap-2">
+          <Sparkles className="w-4 h-4" /> 已保存的申诉书
+        </h4>
+        <div className="bg-gray-50 rounded-xl p-4">
+          <pre className="text-sm whitespace-pre-wrap font-sans leading-relaxed text-gray-700">{caseData.petition_draft}</pre>
+        </div>
       </div>
     );
   };
@@ -229,13 +280,12 @@ const CaseDetailPage = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div className="bg-gray-50 rounded-xl p-4 space-y-3">
                 <h3 className="font-medium text-gtc-navy flex items-center gap-2"><Package className="w-4 h-4" /> 产品信息</h3>
-                <p className="text-sm"><span className="text-gray-400">描述:</span> {caseData.product_description || '-'}</p>
-                <p className="text-sm"><span className="text-gray-400">HTS:</span> {caseData.hts_code || '-'}</p>
-                <p className="text-sm"><span className="text-gray-400">原产国:</span> {caseData.country_of_origin || '-'}</p>
+                <p className="text-sm"><span className="text-gray-400">HTS编码:</span> {caseData.hts_code || '-'}</p>
+                <p className="text-sm"><span className="text-gray-400">法律依据:</span> {caseData.law_basis || '-'}</p>
               </div>
               <div className="bg-gray-50 rounded-xl p-4 space-y-3">
                 <h3 className="font-medium text-gtc-navy flex items-center gap-2"><MapPin className="w-4 h-4" /> 查扣详情</h3>
-                <p className="text-sm"><span className="text-gray-400">原因:</span> {caseData.detention_reason || '-'}</p>
+                <p className="text-sm"><span className="text-gray-400">查扣编号:</span> {caseData.seizure_number || '-'}</p>
                 <p className="text-sm"><span className="text-gray-400">口岸:</span> {caseData.port_of_entry || '-'}</p>
                 <p className="text-sm"><span className="text-gray-400">创建:</span> {new Date(caseData.created_at).toLocaleString('zh-CN')}</p>
               </div>
@@ -255,7 +305,7 @@ const CaseDetailPage = () => {
                     <div key={file.id} className="py-3 flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <FileText className="w-5 h-5 text-gtc-navy" />
-                        <span>{file.filename}</span>
+                        <span>{file.file_name}</span>
                       </div>
                     </div>
                   ))}
@@ -268,28 +318,40 @@ const CaseDetailPage = () => {
 
           {activeTab === 'ai' && (
             <div className="space-y-6">
+              {/* 显示已保存的结果 */}
+              {renderSavedRiskAnalysis()}
+              {renderSavedPetition()}
+              
+              {/* 操作按钮 */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <button onClick={handleAnalyze} disabled={analyzing}
                   className="bg-blue-500 text-white p-4 rounded-xl flex items-center justify-center gap-2 hover:bg-blue-600 disabled:opacity-50">
                   {analyzing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Brain className="w-5 h-5" />}
-                  Gemini 风险分析
+                  {caseData?.risk_score ? '重新分析风险' : 'Gemini 风险分析'}
                 </button>
                 <button onClick={handleGeneratePetition} disabled={generating}
                   className="bg-purple-500 text-white p-4 rounded-xl flex items-center justify-center gap-2 hover:bg-purple-600 disabled:opacity-50">
                   {generating ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
-                  Claude 生成申诉书
+                  {caseData?.petition_draft ? '重新生成申诉书' : 'Claude 生成申诉书'}
                 </button>
               </div>
+              
+              {/* 显示新生成的结果 */}
               {aiResult && (
                 <div className={`rounded-xl ${aiResult.type === 'error' ? 'bg-red-50 text-red-600 p-4' : ''}`}>
                   {aiResult.type === 'error' ? (
                     aiResult.message
                   ) : aiResult.type === 'analysis' ? (
-                    renderAnalysisResult(aiResult.data)
+                    <div>
+                      <h4 className="font-medium text-gtc-navy mb-3 flex items-center gap-2">
+                        <Brain className="w-4 h-4" /> 新生成的风险分析
+                      </h4>
+                      {renderAnalysisResult(aiResult.data)}
+                    </div>
                   ) : aiResult.type === 'petition' ? (
                     <div className="bg-gray-50 rounded-xl p-4">
                       <h4 className="font-medium text-gtc-navy mb-3 flex items-center gap-2">
-                        <Sparkles className="w-4 h-4" /> 申诉书草稿
+                        <Sparkles className="w-4 h-4" /> 新生成的申诉书
                       </h4>
                       <pre className="text-sm whitespace-pre-wrap font-sans leading-relaxed text-gray-700">{aiResult.data.petition_draft}</pre>
                     </div>
