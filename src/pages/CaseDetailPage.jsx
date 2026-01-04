@@ -13,9 +13,7 @@ import {
   CheckCircle,
   AlertTriangle,
   Package,
-  Building,
   MapPin,
-  Calendar,
   Loader2,
   RefreshCw,
   AlertCircle,
@@ -67,13 +65,38 @@ const CaseDetailPage = () => {
     }
   };
 
+  const handleFileDownload = async (fileId, fileName) => {
+    try {
+      const blob = await filesAPI.download(fileId);
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      alert('文件下载失败');
+    }
+  };
+
+  const handleFileDelete = async (fileId) => {
+    if (!confirm('确定删除此文件？')) return;
+    try {
+      await filesAPI.delete(fileId);
+      await fetchCaseData();
+    } catch (error) {
+      alert('文件删除失败');
+    }
+  };
+
   const handleAnalyze = async () => {
     setAnalyzing(true);
     setAiResult(null);
     try {
       const result = await aiAPI.analyzeDocument(id, 'risk_scan');
       setAiResult({ type: 'analysis', data: result });
-      // 刷新案件数据以获取保存的结果
       await fetchCaseData();
     } catch (error) {
       setAiResult({ type: 'error', message: '分析失败，请稍后重试' });
@@ -88,7 +111,6 @@ const CaseDetailPage = () => {
     try {
       const result = await aiAPI.generatePetition(id);
       setAiResult({ type: 'petition', data: result });
-      // 刷新案件数据以获取保存的结果
       await fetchCaseData();
     } catch (error) {
       setAiResult({ type: 'error', message: '生成失败，请稍后重试' });
@@ -145,14 +167,12 @@ const CaseDetailPage = () => {
             </span>
           </div>
         </div>
-
         <div className="bg-white rounded-xl p-4 border border-gray-200">
           <h4 className="font-medium text-gtc-navy mb-2 flex items-center gap-2">
             <FileText className="w-4 h-4" /> 风险摘要
           </h4>
           <p className="text-sm text-gray-700 leading-relaxed">{summary}</p>
         </div>
-
         {issues.length > 0 && (
           <div className="bg-white rounded-xl p-4 border border-gray-200">
             <h4 className="font-medium text-gtc-navy mb-3 flex items-center gap-2">
@@ -167,15 +187,9 @@ const CaseDetailPage = () => {
                       {issue.severity === 'high' || issue.severity === 'critical' ? '高' : issue.severity === 'medium' ? '中' : '低'}
                     </span>
                   </div>
-                  {issue.evidence && (
-                    <p className="text-xs text-gray-600 mb-1"><span className="font-medium">证据:</span> {issue.evidence}</p>
-                  )}
-                  {issue.impact && (
-                    <p className="text-xs text-gray-600 mb-1"><span className="font-medium">影响:</span> {issue.impact}</p>
-                  )}
-                  {issue.recommendation && (
-                    <p className="text-xs text-blue-600"><span className="font-medium">建议:</span> {issue.recommendation}</p>
-                  )}
+                  {issue.evidence && <p className="text-xs text-gray-600 mb-1"><span className="font-medium">证据:</span> {issue.evidence}</p>}
+                  {issue.impact && <p className="text-xs text-gray-600 mb-1"><span className="font-medium">影响:</span> {issue.impact}</p>}
+                  {issue.recommendation && <p className="text-xs text-blue-600"><span className="font-medium">建议:</span> {issue.recommendation}</p>}
                 </div>
               ))}
             </div>
@@ -185,13 +199,10 @@ const CaseDetailPage = () => {
     );
   };
 
-  // 渲染已保存的风险分析
   const renderSavedRiskAnalysis = () => {
     if (!caseData?.risk_score && !caseData?.risk_analysis) return null;
-    
     const riskScore = caseData.risk_score || 0;
     const riskColor = getRiskColor(riskScore);
-    
     return (
       <div className="space-y-4 mb-6">
         <h4 className="font-medium text-gtc-navy flex items-center gap-2">
@@ -215,10 +226,8 @@ const CaseDetailPage = () => {
     );
   };
 
-  // 渲染已保存的申诉书
   const renderSavedPetition = () => {
     if (!caseData?.petition_draft) return null;
-    
     return (
       <div className="space-y-4 mb-6">
         <h4 className="font-medium text-gtc-navy flex items-center gap-2">
@@ -307,6 +316,22 @@ const CaseDetailPage = () => {
                         <FileText className="w-5 h-5 text-gtc-navy" />
                         <span>{file.file_name}</span>
                       </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleFileDownload(file.id, file.file_name)}
+                          className="p-2 text-gray-500 hover:text-gtc-navy hover:bg-gray-100 rounded-lg"
+                          title="下载"
+                        >
+                          <Download className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleFileDelete(file.id)}
+                          className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg"
+                          title="删除"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -318,11 +343,8 @@ const CaseDetailPage = () => {
 
           {activeTab === 'ai' && (
             <div className="space-y-6">
-              {/* 显示已保存的结果 */}
               {renderSavedRiskAnalysis()}
               {renderSavedPetition()}
-              
-              {/* 操作按钮 */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <button onClick={handleAnalyze} disabled={analyzing}
                   className="bg-blue-500 text-white p-4 rounded-xl flex items-center justify-center gap-2 hover:bg-blue-600 disabled:opacity-50">
@@ -335,8 +357,6 @@ const CaseDetailPage = () => {
                   {caseData?.petition_draft ? '重新生成申诉书' : 'Claude 生成申诉书'}
                 </button>
               </div>
-              
-              {/* 显示新生成的结果 */}
               {aiResult && (
                 <div className={`rounded-xl ${aiResult.type === 'error' ? 'bg-red-50 text-red-600 p-4' : ''}`}>
                   {aiResult.type === 'error' ? (
