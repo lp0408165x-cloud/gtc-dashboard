@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { casesAPI, filesAPI, aiAPI } from '../services/api';
+import { casesAPI, filesAPI, aiAPI, toolsAPI } from '../services/api';
 import {
   ArrowLeft,
   FileText,
@@ -18,6 +18,7 @@ import {
   RefreshCw,
   AlertCircle,
   Shield,
+  Zap,
 } from 'lucide-react';
 
 const CaseDetailPage = () => {
@@ -31,6 +32,8 @@ const CaseDetailPage = () => {
   const [generating, setGenerating] = useState(false);
   const [aiResult, setAiResult] = useState(null);
   const [activeTab, setActiveTab] = useState('info');
+  const [processing, setProcessing] = useState(false);
+  const [toolResult, setToolResult] = useState(null);
 
   useEffect(() => {
     fetchCaseData();
@@ -116,6 +119,51 @@ const CaseDetailPage = () => {
       setAiResult({ type: 'error', message: '生成失败，请稍后重试' });
     } finally {
       setGenerating(false);
+    }
+  };
+
+  // 文档预处理
+  const handlePreprocess = async (fileId) => {
+    setProcessing(true);
+    setToolResult(null);
+    try {
+      const result = await toolsAPI.preprocess(fileId);
+      setToolResult({ type: 'preprocess', success: true, data: result });
+      await fetchCaseData();
+    } catch (error) {
+      setToolResult({ type: 'preprocess', success: false, message: error.response?.data?.detail || '预处理失败' });
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  // 文档分类与抽取
+  const handleClassifyExtract = async (fileId) => {
+    setProcessing(true);
+    setToolResult(null);
+    try {
+      const result = await toolsAPI.classifyExtract(fileId);
+      setToolResult({ type: 'classify', success: true, data: result });
+      await fetchCaseData();
+    } catch (error) {
+      setToolResult({ type: 'classify', success: false, message: error.response?.data?.detail || '分类抽取失败' });
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  // 一致性校验
+  const handleConsistencyCheck = async () => {
+    setProcessing(true);
+    setToolResult(null);
+    try {
+      const result = await toolsAPI.consistencyCheck(id);
+      setToolResult({ type: 'consistency', success: true, data: result });
+      await fetchCaseData();
+    } catch (error) {
+      setToolResult({ type: 'consistency', success: false, message: error.response?.data?.detail || '一致性校验失败' });
+    } finally {
+      setProcessing(false);
     }
   };
 
@@ -240,6 +288,63 @@ const CaseDetailPage = () => {
     );
   };
 
+  // 渲染工具结果
+  const renderToolResult = () => {
+    if (!toolResult) return null;
+
+    if (!toolResult.success) {
+      return (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4 mt-4">
+          <p className="text-red-600 flex items-center gap-2">
+            <AlertCircle className="w-4 h-4" />
+            {toolResult.message}
+          </p>
+        </div>
+      );
+    }
+
+    const { type, data } = toolResult;
+    const result = data.result || data;
+
+    return (
+      <div className="bg-green-50 border border-green-200 rounded-xl p-4 mt-4">
+        <h4 className="font-medium text-green-800 mb-3 flex items-center gap-2">
+          <CheckCircle className="w-4 h-4" />
+          {type === 'preprocess' && '预处理完成'}
+          {type === 'classify' && '分类抽取完成'}
+          {type === 'consistency' && '一致性校验完成'}
+        </h4>
+        <div className="text-sm text-gray-700 space-y-2">
+          {type === 'preprocess' && (
+            <>
+              <p>状态: {result.status}</p>
+              <p>处理页数: {result.pages_processed}/{result.pages_total}</p>
+              <p>质量评分: {(result.quality_score * 100).toFixed(0)}%</p>
+              <p>OCR: {result.ocr_applied ? '已应用' : '未应用'}</p>
+              <p>语言: {result.language_detected}</p>
+            </>
+          )}
+          {type === 'classify' && (
+            <>
+              <p>文档类型: {result.doc_kind}</p>
+              <p>置信度: {(result.confidence * 100).toFixed(0)}%</p>
+              <p>抽取字段: {Array.isArray(result.fields_extracted) ? result.fields_extracted.join(', ') : result.fields_extracted}</p>
+            </>
+          )}
+          {type === 'consistency' && (
+            <>
+              <p>总检查项: {result.total_checks}</p>
+              <p>通过: {result.passed}</p>
+              <p>失败: {result.failed}</p>
+              <p>警告: {result.warnings}</p>
+              <p>风险评分: {result.risk_score}/10</p>
+            </>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -303,20 +408,56 @@ const CaseDetailPage = () => {
 
           {activeTab === 'files' && (
             <div className="space-y-4">
-              <label className="inline-flex items-center gap-2 bg-gtc-navy text-white px-4 py-2 rounded-xl cursor-pointer hover:bg-gtc-blue">
-                {uploading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Upload className="w-5 h-5" />}
-                上传文件
-                <input type="file" onChange={handleFileUpload} className="hidden" disabled={uploading} />
-              </label>
+              <div className="flex items-center gap-4">
+                <label className="inline-flex items-center gap-2 bg-gtc-navy text-white px-4 py-2 rounded-xl cursor-pointer hover:bg-gtc-blue">
+                  {uploading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Upload className="w-5 h-5" />}
+                  上传文件
+                  <input type="file" onChange={handleFileUpload} className="hidden" disabled={uploading} />
+                </label>
+                <button
+                  onClick={handleConsistencyCheck}
+                  disabled={processing || files.length === 0}
+                  className="inline-flex items-center gap-2 bg-orange-500 text-white px-4 py-2 rounded-xl hover:bg-orange-600 disabled:opacity-50"
+                >
+                  {processing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Zap className="w-5 h-5" />}
+                  一致性校验
+                </button>
+              </div>
+
+              {renderToolResult()}
+
               {files.length > 0 ? (
                 <div className="divide-y">
                   {files.map((file) => (
                     <div key={file.id} className="py-3 flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <FileText className="w-5 h-5 text-gtc-navy" />
-                        <span>{file.file_name}</span>
+                        <div>
+                          <span className="block">{file.file_name}</span>
+                          {file.doc_kind && (
+                            <span className="text-xs text-purple-600 bg-purple-50 px-2 py-0.5 rounded">
+                              {file.doc_kind}
+                            </span>
+                          )}
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => handlePreprocess(file.id)}
+                          disabled={processing}
+                          className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg disabled:opacity-50"
+                          title="预处理"
+                        >
+                          <RefreshCw className={`w-4 h-4 ${processing ? 'animate-spin' : ''}`} />
+                        </button>
+                        <button
+                          onClick={() => handleClassifyExtract(file.id)}
+                          disabled={processing}
+                          className="p-2 text-gray-500 hover:text-purple-600 hover:bg-purple-50 rounded-lg disabled:opacity-50"
+                          title="分类抽取"
+                        >
+                          <Brain className="w-4 h-4" />
+                        </button>
                         <button
                           onClick={() => handleFileDownload(file.id, file.file_name)}
                           className="p-2 text-gray-500 hover:text-gtc-navy hover:bg-gray-100 rounded-lg"
