@@ -118,5 +118,48 @@ export const aiAPI = {
     return response.data;
   },
 };
+export const toolsAPI = {
+  // 文档预处理
+  preprocess: async (fileId, options = {}) => {
+    const response = await api.post('/tools/preprocess', {
+      file_id: fileId,
+      ocr_mode: options.ocrMode || 'auto',
+      language: options.language || 'eng',
+      max_pages: options.maxPages || 100,
+    });
+    return response.data;
+  },
 
+  // 文档分类与字段抽取
+  classifyExtract: async (fileId, options = {}) => {
+    const response = await api.post('/tools/classify-extract', {
+      file_id: fileId,
+      doc_kind_hint: options.docKindHint || null,
+      force_reclassify: options.forceReclassify || false,
+    });
+    return response.data;
+  },
+
+  // 一致性校验
+  consistencyCheck: async (caseId, options = {}) => {
+    const response = await api.post('/tools/consistency-check', {
+      case_id: caseId,
+      rule_ids: options.ruleIds || null,
+      include_passed: options.includePassed !== false,
+    });
+    return response.data;
+  },
+
+  // 获取可用工具列表
+  getAvailable: async () => {
+    const response = await api.get('/tools/available');
+    return response.data;
+  },
+
+  // 获取工具健康状态
+  getHealth: async () => {
+    const response = await api.get('/tools/health');
+    return response.data;
+  },
+};
 export default api;
