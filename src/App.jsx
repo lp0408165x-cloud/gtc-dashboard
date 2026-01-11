@@ -8,6 +8,7 @@ import CasesListPage from './pages/CasesListPage';
 import NewCasePage from './pages/NewCasePage';
 import CaseDetailPage from './pages/CaseDetailPage';
 import AnalyticsPage from './pages/AnalyticsPage';
+import SettingsPage from './pages/SettingsPage';
 
 function App() {
   return (
@@ -24,24 +25,12 @@ function App() {
           <Route path="cases/new" element={<NewCasePage />} />
           <Route path="cases/:id" element={<CaseDetailPage />} />
           <Route path="analytics" element={<AnalyticsPage />} />
-          <Route path="settings" element={<ComingSoon title="设置" />} />
+          <Route path="settings" element={<SettingsPage />} />
         </Route>
         {/* 404 */}
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </AuthProvider>
-  );
-}
-
-// 临时占位组件
-function ComingSoon({ title }) {
-  return (
-    <div className="flex items-center justify-center h-64">
-      <div className="text-center">
-        <h2 className="text-2xl font-display font-bold text-gtc-navy mb-2">{title}</h2>
-        <p className="text-gray-500">功能开发中，敬请期待...</p>
-      </div>
-    </div>
   );
 }
 
