@@ -19,6 +19,8 @@ import {
   AlertCircle,
   Shield,
   Zap,
+  Search,
+  XCircle,
 } from 'lucide-react';
 
 const CaseDetailPage = () => {
@@ -30,10 +32,12 @@ const CaseDetailPage = () => {
   const [uploading, setUploading] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [scanning, setScanning] = useState(false);
   const [aiResult, setAiResult] = useState(null);
   const [activeTab, setActiveTab] = useState('info');
   const [processing, setProcessing] = useState(false);
   const [toolResult, setToolResult] = useState(null);
+  const [scanResult, setScanResult] = useState(null);
 
   useEffect(() => {
     fetchCaseData();
@@ -122,6 +126,24 @@ const CaseDetailPage = () => {
     }
   };
 
+  // UFLPA 风险扫描
+  const handleRiskScan = async () => {
+    setScanning(true);
+    setScanResult(null);
+    try {
+      const result = await toolsAPI.riskScan(id);
+      setScanResult({ success: true, data: result });
+      await fetchCaseData();
+    } catch (error) {
+      setScanResult({ 
+        success: false, 
+        message: error.response?.data?.detail?.error || error.response?.data?.detail || 'UFLPA 扫描失败' 
+      });
+    } finally {
+      setScanning(false);
+    }
+  };
+
   // 文档预处理
   const handlePreprocess = async (fileId) => {
     setProcessing(true);
@@ -186,9 +208,132 @@ const CaseDetailPage = () => {
   };
 
   const getSeverityColor = (severity) => {
-    if (severity === 'high' || severity === 'critical') return 'bg-red-100 text-red-700';
-    if (severity === 'medium') return 'bg-amber-100 text-amber-700';
+    if (severity === 'high' || severity === 'critical' || severity === 'CRITICAL') return 'bg-red-100 text-red-700';
+    if (severity === 'medium' || severity === 'HIGH') return 'bg-amber-100 text-amber-700';
     return 'bg-green-100 text-green-700';
+  };
+
+  const getRiskLevelConfig = (level) => {
+    const configs = {
+      CRITICAL: { label: '严重风险', color: 'bg-red-100 text-red-700', icon: XCircle },
+      HIGH: { label: '高风险', color: 'bg-orange-100 text-orange-700', icon: AlertTriangle },
+      MEDIUM: { label: '中等风险', color: 'bg-amber-100 text-amber-700', icon: AlertCircle },
+      LOW: { label: '低风险', color: 'bg-green-100 text-green-700', icon: CheckCircle },
+      UNKNOWN: { label: '未知', color: 'bg-gray-100 text-gray-700', icon: Clock },
+    };
+    return configs[level] || configs.UNKNOWN;
+  };
+
+  // 渲染风险扫描结果
+  const renderScanResult = () => {
+    if (!scanResult) return null;
+
+    if (!scanResult.success) {
+      return (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4 mt-4">
+          <p className="text-red-600 flex items-center gap-2">
+            <AlertCircle className="w-4 h-4" />
+            {scanResult.message}
+          </p>
+        </div>
+      );
+    }
+
+    const result = scanResult.data.result || scanResult.data;
+    const riskConfig = getRiskLevelConfig(result.risk_level);
+    const RiskIcon = riskConfig.icon;
+
+    return (
+      <div className="bg-white border border-gray-200 rounded-xl p-4 mt-4 space-y-4">
+        <div className="flex items-center justify-between">
+          <h4 className="font-medium text-gtc-navy flex items-center gap-2">
+            <Shield className="w-5 h-5" />
+            UFLPA 风险扫描结果
+          </h4>
+          <span className={`px-3 py-1 rounded-full text-sm font-medium flex items-center gap-1 ${riskConfig.color}`}>
+            <RiskIcon className="w-4 h-4" />
+            {riskConfig.label}
+          </span>
+        </div>
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+          <div className="bg-gray-50 rounded-lg p-3">
+            <p className="text-gray-500">扫描实体数</p>
+            <p className="text-xl font-bold text-gtc-navy">{result.scanned_count}</p>
+          </div>
+          <div className="bg-gray-50 rounded-lg p-3">
+            <p className="text-gray-500">匹配数</p>
+            <p className="text-xl font-bold text-gtc-navy">{result.match_count || 0}</p>
+          </div>
+          <div className="bg-gray-50 rounded-lg p-3">
+            <p className="text-gray-500">风险等级</p>
+            <p className={`text-xl font-bold ${result.risk_level === 'CRITICAL' ? 'text-red-600' : result.risk_level === 'HIGH' ? 'text-orange-600' : 'text-green-600'}`}>
+              {result.risk_level}
+            </p>
+          </div>
+          <div className="bg-gray-50 rounded-lg p-3">
+            <p className="text-gray-500">扫描时间</p>
+            <p className="text-sm font-medium text-gtc-navy">
+              {result.scan_time ? new Date(result.scan_time).toLocaleString('zh-CN') : '-'}
+            </p>
+          </div>
+        </div>
+
+        {result.scanned_entities && result.scanned_entities.length > 0 && (
+          <div>
+            <p className="text-sm text-gray-500 mb-2">扫描的实体:</p>
+            <div className="flex flex-wrap gap-2">
+              {result.scanned_entities.map((entity, i) => (
+                <span key={i} className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs">
+                  {entity}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {result.matches && result.matches.length > 0 && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <h5 className="font-medium text-red-700 mb-3 flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4" />
+              发现 {result.matches.length} 个黑名单匹配
+            </h5>
+            <div className="space-y-3">
+              {result.matches.map((match, i) => (
+                <div key={i} className="bg-white rounded-lg p-3 border border-red-100">
+                  <div className="flex items-start justify-between mb-2">
+                    <div>
+                      <p className="font-medium text-gray-800">{match.input_entity}</p>
+                      <p className="text-sm text-gray-500">
+                        匹配: {match.matched_entity}
+                        {match.matched_alias && ` (别名: ${match.matched_alias})`}
+                      </p>
+                    </div>
+                    <span className={`px-2 py-0.5 rounded text-xs font-medium ${getSeverityColor(match.match_level)}`}>
+                      {match.match_level}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-4 text-xs text-gray-500">
+                    <span>相似度: {(match.similarity_score * 100).toFixed(1)}%</span>
+                    <span>类型: {match.entity_type}</span>
+                    <span>添加日期: {match.added_date}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {(!result.matches || result.matches.length === 0) && (
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+            <p className="text-green-700 flex items-center gap-2">
+              <CheckCircle className="w-4 h-4" />
+              未发现 UFLPA 黑名单匹配，供应链风险较低
+            </p>
+          </div>
+        )}
+      </div>
+    );
   };
 
   const renderAnalysisResult = (data) => {
@@ -408,7 +553,7 @@ const CaseDetailPage = () => {
 
           {activeTab === 'files' && (
             <div className="space-y-4">
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-4 flex-wrap">
                 <label className="inline-flex items-center gap-2 bg-gtc-navy text-white px-4 py-2 rounded-xl cursor-pointer hover:bg-gtc-blue">
                   {uploading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Upload className="w-5 h-5" />}
                   上传文件
@@ -422,9 +567,18 @@ const CaseDetailPage = () => {
                   {processing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Zap className="w-5 h-5" />}
                   一致性校验
                 </button>
+                <button
+                  onClick={handleRiskScan}
+                  disabled={scanning}
+                  className="inline-flex items-center gap-2 bg-red-500 text-white px-4 py-2 rounded-xl hover:bg-red-600 disabled:opacity-50"
+                >
+                  {scanning ? <Loader2 className="w-5 h-5 animate-spin" /> : <Search className="w-5 h-5" />}
+                  UFLPA 扫描
+                </button>
               </div>
 
               {renderToolResult()}
+              {renderScanResult()}
 
               {files.length > 0 ? (
                 <div className="divide-y">
@@ -486,7 +640,7 @@ const CaseDetailPage = () => {
             <div className="space-y-6">
               {renderSavedRiskAnalysis()}
               {renderSavedPetition()}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <button onClick={handleAnalyze} disabled={analyzing}
                   className="bg-blue-500 text-white p-4 rounded-xl flex items-center justify-center gap-2 hover:bg-blue-600 disabled:opacity-50">
                   {analyzing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Brain className="w-5 h-5" />}
@@ -497,7 +651,15 @@ const CaseDetailPage = () => {
                   {generating ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
                   {caseData?.petition_draft ? '重新生成申诉书' : 'Claude 生成申诉书'}
                 </button>
+                <button onClick={handleRiskScan} disabled={scanning}
+                  className="bg-red-500 text-white p-4 rounded-xl flex items-center justify-center gap-2 hover:bg-red-600 disabled:opacity-50">
+                  {scanning ? <Loader2 className="w-5 h-5 animate-spin" /> : <Search className="w-5 h-5" />}
+                  UFLPA 黑名单扫描
+                </button>
               </div>
+              
+              {renderScanResult()}
+              
               {aiResult && (
                 <div className={`rounded-xl ${aiResult.type === 'error' ? 'bg-red-50 text-red-600 p-4' : ''}`}>
                   {aiResult.type === 'error' ? (
