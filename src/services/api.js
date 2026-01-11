@@ -149,7 +149,16 @@ export const toolsAPI = {
     });
     return response.data;
   },
-
+   // 风险扫描
+  riskScan: async (caseId, options = {}) => {
+    const response = await api.post('/tools/risk-scan', {
+      case_id: caseId,
+      entity_names: options.entityNames || null,
+      include_extracted: options.includeExtracted !== false,
+      match_threshold: options.matchThreshold || 0.55,
+    });
+    return response.data;
+  }, 
   // 获取可用工具列表
   getAvailable: async () => {
     const response = await api.get('/tools/available');
