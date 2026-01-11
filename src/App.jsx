@@ -7,6 +7,7 @@ import DashboardPage from './pages/DashboardPage';
 import CasesListPage from './pages/CasesListPage';
 import NewCasePage from './pages/NewCasePage';
 import CaseDetailPage from './pages/CaseDetailPage';
+import AnalyticsPage from './pages/AnalyticsPage';
 
 function App() {
   return (
@@ -15,7 +16,6 @@ function App() {
         {/* Public Routes */}
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
-
         {/* Protected Routes */}
         <Route path="/" element={<DashboardLayout />}>
           <Route index element={<Navigate to="/dashboard" replace />} />
@@ -23,10 +23,9 @@ function App() {
           <Route path="cases" element={<CasesListPage />} />
           <Route path="cases/new" element={<NewCasePage />} />
           <Route path="cases/:id" element={<CaseDetailPage />} />
-          <Route path="analytics" element={<ComingSoon title="数据分析" />} />
+          <Route path="analytics" element={<AnalyticsPage />} />
           <Route path="settings" element={<ComingSoon title="设置" />} />
         </Route>
-
         {/* 404 */}
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
