@@ -120,9 +120,8 @@ export default function UsersPage() {
   };
 
   // 检查权限
-  const canManageUsers = user?.role_name === 'super_admin' || user?.role_name === 'admin';
-  const isSuperAdmin = user?.role_name === 'super_admin';
-
+  const canManageUsers = user?.role_id === 4 || user?.role_id === 1;
+  const isSuperAdmin = user?.role_id === 4;
   if (!canManageUsers) {
     return (
       <div className="p-6">
