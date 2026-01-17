@@ -8,6 +8,7 @@ import {
   BarChart3,
   Settings,
   LogOut,
+  Users,
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react';
@@ -24,12 +25,13 @@ const Sidebar = () => {
   };
 
   const navItems = [
-  { path: '/dashboard', icon: LayoutDashboard, label: '控制台' },
-  { path: '/cases', icon: FolderOpen, label: '案件管理', end: true },
-  { path: '/cases/new', icon: FilePlus, label: '新建案件' },
-  { path: '/analytics', icon: BarChart3, label: '数据分析' },
-  { path: '/settings', icon: Settings, label: '设置' },
-];
+    { path: '/dashboard', icon: LayoutDashboard, label: '控制台' },
+    { path: '/cases', icon: FolderOpen, label: '案件管理' },
+    { path: '/cases/new', icon: FilePlus, label: '新建案件' },
+    { path: '/analytics', icon: BarChart3, label: '鏁版嵁鍒嗘瀽' },
+    { path: '/users', icon: Users, label: '用户管理' },
+    { path: '/settings', icon: Settings, label: '璁剧疆' },
+  ];
 
   return (
     <aside
@@ -66,7 +68,6 @@ const Sidebar = () => {
             <li key={item.path}>
               <NavLink
                 to={item.path}
-                end={item.end}
                 className={({ isActive }) =>
                   `flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
                     isActive
