@@ -40,8 +40,8 @@ const login = async (email, password) => {
   try {
     const data = await authAPI.login(email, password);
     localStorage.setItem('gtc_token', data.access_token);
-    // 后端没返回 user，先用 email 作为用户信息
-    const userInfo = { email: email };
+    // 获取完整用户信息
+    const userInfo = await authAPI.getCurrentUser();
     localStorage.setItem('gtc_user', JSON.stringify(userInfo));
     setUser(userInfo);
     return data;
