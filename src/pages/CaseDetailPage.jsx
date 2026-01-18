@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { casesAPI, filesAPI, aiAPI, toolsAPI } from '../services/api';
+import AgentAnalyzeButton from '../components/AgentAnalyzeButton';
 import {
   ArrowLeft,
   FileText,
@@ -638,6 +639,12 @@ const CaseDetailPage = () => {
 
           {activeTab === 'ai' && (
             <div className="space-y-6">
+               {/* Agent 一键智能分析 */}
+              <div className="p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl border border-blue-100">
+                <h3 className="text-lg font-semibold text-gray-800 mb-3">Agent 智能分析</h3>
+                <p className="text-sm text-gray-600 mb-4">自动执行完整分析流程：文档预处理 → 字段提取 → 一致性校验 → 风险扫描</p>
+                <AgentAnalyzeButton caseId={parseInt(id)} onComplete={() => fetchCaseData()} />
+              </div>
               {renderSavedRiskAnalysis()}
               {renderSavedPetition()}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
