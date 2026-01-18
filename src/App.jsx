@@ -9,6 +9,7 @@ import NewCasePage from './pages/NewCasePage';
 import CaseDetailPage from './pages/CaseDetailPage';
 import UsersPage from './pages/UsersPage';
 import AcceptInvitePage from './pages/AcceptInvitePage';
+import AnalyticsPage from './pages/AnalyticsPage';
 
 function App() {
   return (
@@ -26,7 +27,7 @@ function App() {
           <Route path="cases" element={<CasesListPage />} />
           <Route path="cases/new" element={<NewCasePage />} />
           <Route path="cases/:id" element={<CaseDetailPage />} />
-          <Route path="analytics" element={<ComingSoon title="数据分析" />} />
+         <Route path="analytics" element={<AnalyticsPage />} />
 	<Route path="users" element={<UsersPage />} />
           <Route path="settings" element={<ComingSoon title="设置" />} />
         </Route>
