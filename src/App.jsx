@@ -11,7 +11,7 @@ import UsersPage from './pages/UsersPage';
 import AcceptInvitePage from './pages/AcceptInvitePage';
 import AnalyticsPage from './pages/AnalyticsPage';
 import SettingsPage from './pages/SettingsPage';
-import SupplyChainReviewPage from './pages/SupplyChainReviewPage';  // 新增
+import SupplyChainReviewPage from './pages/SupplyChainReviewPage';
 
 function App() {
   return (
@@ -29,7 +29,7 @@ function App() {
           <Route path="cases" element={<CasesListPage />} />
           <Route path="cases/new" element={<NewCasePage />} />
           <Route path="cases/:id" element={<CaseDetailPage />} />
-          <Route path="supply-chain-review" element={<SupplyChainReviewPage />} />  {/* 新增 */}
+          <Route path="supply-chain-review" element={<SupplyChainReviewPage />} />
           <Route path="analytics" element={<AnalyticsPage />} />
           <Route path="users" element={<UsersPage />} />
           <Route path="settings" element={<SettingsPage />} />
