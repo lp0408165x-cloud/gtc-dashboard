@@ -11,6 +11,7 @@ import {
   Users,
   ChevronLeft,
   ChevronRight,
+  Package,  // 新增：供应链图标
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -25,13 +26,14 @@ const Sidebar = () => {
   };
 
   const navItems = [
-  { path: '/dashboard', icon: LayoutDashboard, label: '控制台' },
-  { path: '/cases', icon: FolderOpen, label: '案件管理' },
-  { path: '/cases/new', icon: FilePlus, label: '新建案件' },
-  { path: '/analytics', icon: BarChart3, label: '数据分析' },
-  { path: '/users', icon: Users, label: '用户管理' },
-  { path: '/settings', icon: Settings, label: '设置' },
-];
+    { path: '/dashboard', icon: LayoutDashboard, label: '控制台' },
+    { path: '/cases', icon: FolderOpen, label: '案件管理' },
+    { path: '/cases/new', icon: FilePlus, label: '新建案件' },
+    { path: '/supply-chain-review', icon: Package, label: '供应链审查' },  // 新增
+    { path: '/analytics', icon: BarChart3, label: '数据分析' },
+    { path: '/users', icon: Users, label: '用户管理' },
+    { path: '/settings', icon: Settings, label: '设置' },
+  ];
 
   return (
     <aside
