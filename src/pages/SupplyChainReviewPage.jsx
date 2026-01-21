@@ -59,7 +59,7 @@ const SupplyChainReviewPage = () => {
   const [promptPreview, setPromptPreview] = useState(null);
   const [showPromptModal, setShowPromptModal] = useState(false);
 
-  const PAGE_LIMIT = 100;
+  const PAGE_LIMIT = 500;
 
   // 加载初始数据
   useEffect(() => {
