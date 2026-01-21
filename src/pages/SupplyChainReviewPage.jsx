@@ -16,7 +16,8 @@ import {
   Pencil,
   ChevronRight,
   ChevronLeft,
-  X
+  X,
+  AlertCircle
 } from 'lucide-react';
 import { supplyChainAPI } from '../services/supplyChainApi';
 
@@ -47,6 +48,7 @@ const SupplyChainReviewPage = () => {
   // 当前审查状态
   const [currentReview, setCurrentReview] = useState(null);
   const [uploadedFiles, setUploadedFiles] = useState([]);
+  const [totalPages, setTotalPages] = useState(0);
   const [report, setReport] = useState(null);
   
   // UI状态
@@ -56,6 +58,8 @@ const SupplyChainReviewPage = () => {
   const [showReviewList, setShowReviewList] = useState(false);
   const [promptPreview, setPromptPreview] = useState(null);
   const [showPromptModal, setShowPromptModal] = useState(false);
+
+  const PAGE_LIMIT = 100;
 
   // 加载初始数据
   useEffect(() => {
@@ -100,6 +104,8 @@ const SupplyChainReviewPage = () => {
       };
       const result = await supplyChainAPI.createReview(reviewData);
       setCurrentReview(result);
+      setTotalPages(0);
+      setUploadedFiles([]);
       setCurrentStep(2);
     } catch (err) {
       console.error('Failed to create review:', err);
@@ -124,11 +130,14 @@ const SupplyChainReviewPage = () => {
           file_id: result.file_id,
           filename: result.filename,
           size: result.size,
+          page_count: result.page_count || 0,
         }]);
+        setTotalPages(result.total_pages || 0);
       }
       // 刷新当前审查状态
       const updated = await supplyChainAPI.getReview(currentReview.review_id);
       setCurrentReview(updated);
+      setTotalPages(updated.total_pages || 0);
     } catch (err) {
       console.error('Failed to upload file:', err);
       setError('文件上传失败');
@@ -142,8 +151,9 @@ const SupplyChainReviewPage = () => {
     if (!currentReview) return;
     
     try {
-      await supplyChainAPI.deleteFile(currentReview.review_id, fileId);
+      const result = await supplyChainAPI.deleteFile(currentReview.review_id, fileId);
       setUploadedFiles(prev => prev.filter(f => f.file_id !== fileId));
+      setTotalPages(result.total_pages || 0);
     } catch (err) {
       console.error('Failed to delete file:', err);
       setError('删除文件失败');
@@ -168,6 +178,11 @@ const SupplyChainReviewPage = () => {
   const handleProcessReview = async () => {
     if (!currentReview) return;
     
+    if (totalPages > PAGE_LIMIT) {
+      setError(`PDF总页数 (${totalPages}) 超过 ${PAGE_LIMIT} 页限制，请减少文件数量`);
+      return;
+    }
+    
     setProcessing(true);
     setError(null);
 
@@ -178,7 +193,8 @@ const SupplyChainReviewPage = () => {
       setCurrentStep(3);
     } catch (err) {
       console.error('Failed to process review:', err);
-      setError('审查处理失败');
+      const errorMsg = err.response?.data?.detail || '审查处理失败';
+      setError(errorMsg);
     } finally {
       setProcessing(false);
     }
@@ -212,6 +228,7 @@ const SupplyChainReviewPage = () => {
     setSelectedCerts([]);
     setCurrentReview(null);
     setUploadedFiles([]);
+    setTotalPages(0);
     setReport(null);
     setError(null);
   };
@@ -226,6 +243,7 @@ const SupplyChainReviewPage = () => {
       setSelectedTaskType(detailed.task_type);
       setSelectedCerts(detailed.certifications || []);
       setUploadedFiles(detailed.files || []);
+      setTotalPages(detailed.total_pages || 0);
       
       if (detailed.status === 'completed') {
         const reportResult = await supplyChainAPI.getReport(review.review_id);
@@ -366,108 +384,146 @@ const SupplyChainReviewPage = () => {
   );
 
   // 渲染步骤2：上传文件
-  const renderStep2 = () => (
-    <div className="space-y-6">
-      <div className="bg-gray-50 rounded-xl p-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="font-medium text-gray-900">{currentReview?.case_name}</h3>
-            <p className="text-sm text-gray-500">
-              {taskTemplates.find(t => t.id === currentReview?.task_type)?.name}
-              {selectedCerts.length > 0 && ` • ${selectedCerts.join(', ')}`}
-            </p>
+  const renderStep2 = () => {
+    const isOverLimit = totalPages > PAGE_LIMIT;
+    
+    return (
+      <div className="space-y-6">
+        <div className="bg-gray-50 rounded-xl p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="font-medium text-gray-900">{currentReview?.case_name}</h3>
+              <p className="text-sm text-gray-500">
+                {taskTemplates.find(t => t.id === currentReview?.task_type)?.name}
+                {selectedCerts.length > 0 && ` • ${selectedCerts.join(', ')}`}
+              </p>
+            </div>
+            <button
+              onClick={handlePreviewPrompt}
+              className="text-blue-600 hover:text-blue-700 text-sm flex items-center gap-1"
+            >
+              <Eye className="w-4 h-4" />
+              预览提示词
+            </button>
           </div>
+        </div>
+
+        <div
+          className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-blue-400 transition-colors cursor-pointer"
+          onClick={() => document.getElementById('file-upload').click()}
+          onDragOver={(e) => e.preventDefault()}
+          onDrop={(e) => {
+            e.preventDefault();
+            const files = e.dataTransfer.files;
+            if (files.length) {
+              handleFileUpload({ target: { files } });
+            }
+          }}
+        >
+          <input
+            id="file-upload"
+            type="file"
+            multiple
+            className="hidden"
+            onChange={handleFileUpload}
+            accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.gif"
+          />
+          <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+          <p className="text-gray-600 mb-2">拖拽文件到此处，或点击上传</p>
+          <p className="text-sm text-gray-400">支持 PDF, Word, Excel, 图片</p>
+        </div>
+
+        {/* 页数统计 */}
+        {uploadedFiles.length > 0 && (
+          <div className={`p-4 rounded-lg ${isOverLimit ? 'bg-red-50 border border-red-200' : 'bg-blue-50 border border-blue-200'}`}>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                {isOverLimit ? (
+                  <AlertCircle className="w-5 h-5 text-red-500" />
+                ) : (
+                  <FileText className="w-5 h-5 text-blue-500" />
+                )}
+                <span className={isOverLimit ? 'text-red-700' : 'text-blue-700'}>
+                  PDF 总页数：<strong>{totalPages}</strong> / {PAGE_LIMIT} 页
+                </span>
+              </div>
+              {isOverLimit && (
+                <span className="text-red-600 text-sm">
+                  超出限制，请删除部分文件
+                </span>
+              )}
+            </div>
+            {!isOverLimit && totalPages > 0 && (
+              <div className="mt-2 w-full bg-blue-200 rounded-full h-2">
+                <div 
+                  className="bg-blue-600 h-2 rounded-full transition-all"
+                  style={{ width: `${Math.min((totalPages / PAGE_LIMIT) * 100, 100)}%` }}
+                />
+              </div>
+            )}
+          </div>
+        )}
+
+        {uploadedFiles.length > 0 && (
+          <div className="space-y-2">
+            <h4 className="font-medium text-gray-700">已上传文件 ({uploadedFiles.length})</h4>
+            <div className="space-y-2">
+              {uploadedFiles.map((file) => (
+                <div
+                  key={file.file_id}
+                  className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                >
+                  <div className="flex items-center gap-3">
+                    <FileText className="w-5 h-5 text-gray-400" />
+                    <div>
+                      <p className="text-sm font-medium text-gray-700">{file.filename}</p>
+                      <p className="text-xs text-gray-400">
+                        {formatFileSize(file.size)}
+                        {file.page_count > 0 && ` • ${file.page_count} 页`}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleDeleteFile(file.file_id)}
+                    className="text-red-500 hover:text-red-600"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="flex justify-between pt-4">
           <button
-            onClick={handlePreviewPrompt}
-            className="text-blue-600 hover:text-blue-700 text-sm flex items-center gap-1"
+            onClick={() => setCurrentStep(1)}
+            className="flex items-center gap-2 px-6 py-3 text-gray-600 hover:text-gray-800"
           >
-            <Eye className="w-4 h-4" />
-            预览提示词
+            <ChevronLeft className="w-5 h-5" />
+            上一步
+          </button>
+          <button
+            onClick={handleProcessReview}
+            disabled={processing || uploadedFiles.length === 0 || isOverLimit}
+            className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {processing ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin" />
+                处理中...
+              </>
+            ) : (
+              <>
+                开始审查
+                <ChevronRight className="w-5 h-5" />
+              </>
+            )}
           </button>
         </div>
       </div>
-
-      <div
-        className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-blue-400 transition-colors cursor-pointer"
-        onClick={() => document.getElementById('file-upload').click()}
-        onDragOver={(e) => e.preventDefault()}
-        onDrop={(e) => {
-          e.preventDefault();
-          const files = e.dataTransfer.files;
-          if (files.length) {
-            handleFileUpload({ target: { files } });
-          }
-        }}
-      >
-        <input
-          id="file-upload"
-          type="file"
-          multiple
-          className="hidden"
-          onChange={handleFileUpload}
-          accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.gif"
-        />
-        <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-        <p className="text-gray-600 mb-2">拖拽文件到此处，或点击上传</p>
-        <p className="text-sm text-gray-400">支持 PDF, Word, Excel, 图片</p>
-      </div>
-
-      {uploadedFiles.length > 0 && (
-        <div className="space-y-2">
-          <h4 className="font-medium text-gray-700">已上传文件 ({uploadedFiles.length})</h4>
-          <div className="space-y-2">
-            {uploadedFiles.map((file) => (
-              <div
-                key={file.file_id}
-                className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
-              >
-                <div className="flex items-center gap-3">
-                  <FileText className="w-5 h-5 text-gray-400" />
-                  <div>
-                    <p className="text-sm font-medium text-gray-700">{file.filename}</p>
-                    <p className="text-xs text-gray-400">{formatFileSize(file.size)}</p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => handleDeleteFile(file.file_id)}
-                  className="text-red-500 hover:text-red-600"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      <div className="flex justify-between pt-4">
-        <button
-          onClick={() => setCurrentStep(1)}
-          className="flex items-center gap-2 px-6 py-3 text-gray-600 hover:text-gray-800"
-        >
-          <ChevronLeft className="w-5 h-5" />
-          上一步
-        </button>
-        <button
-          onClick={handleProcessReview}
-          disabled={processing || uploadedFiles.length === 0}
-          className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {processing ? (
-            <>
-              <Loader2 className="w-5 h-5 animate-spin" />
-              处理中...
-            </>
-          ) : (
-            <>
-              开始审查
-              <ChevronRight className="w-5 h-5" />
-            </>
-          )}
-        </button>
-      </div>
-    </div>
-  );
+    );
+  };
 
   // 渲染步骤3：查看报告
   const renderStep3 = () => (
