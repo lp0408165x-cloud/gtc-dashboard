@@ -70,6 +70,7 @@ const Sidebar = () => {
             <li key={item.path}>
               <NavLink
                 to={item.path}
+                end={item.path === '/cases'}
                 className={({ isActive }) =>
                   `flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
                     isActive
