@@ -68,6 +68,25 @@ export const casesAPI = {
     const response = await api.delete(`/cases/${caseId}`);
     return response.data;
   },
+  // P0 新增：人工介入 API
+  changeStatus: async (caseId, newStatus, reason = '') => {
+    const response = await api.post(`/cases/${caseId}/status`, {
+      new_status: newStatus,
+      reason: reason,
+    });
+    return response.data;
+  },
+  assign: async (caseId, assignedToUserId, note = '') => {
+    const response = await api.post(`/cases/${caseId}/assign`, {
+      assigned_to_user_id: assignedToUserId,
+      note: note,
+    });
+    return response.data;
+  },
+  humanOverride: async (caseId, overrideData) => {
+    const response = await api.post(`/cases/${caseId}/human-override`, overrideData);
+    return response.data;
+  },
 };
 
 export const filesAPI = {
@@ -93,7 +112,7 @@ export const filesAPI = {
   delete: async (fileId) => {
     const response = await api.delete(`/files/${fileId}`);
     return response.data;
-  },
+  },  
 };
 
 export const aiAPI = {
