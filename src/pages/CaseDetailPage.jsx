@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { casesAPI, filesAPI, aiAPI, toolsAPI } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 import AgentAnalyzeButton from '../components/AgentAnalyzeButton';
 import {
   ArrowLeft,
@@ -22,11 +23,45 @@ import {
   Zap,
   Search,
   XCircle,
+  UserCheck,
+  GitBranch,
+  Edit3,
+  Save,
+  X,
+  History,
+  UserPlus,
 } from 'lucide-react';
+
+// 状态配置
+const STATUS_CONFIG = {
+  pending:          { label: '待处理',     icon: Clock,         color: 'text-amber-600',   bg: 'bg-amber-100' },
+  ai_analyzing:     { label: 'AI分析中',   icon: Loader2,       color: 'text-blue-600',    bg: 'bg-blue-100' },
+  ai_completed:     { label: 'AI已完成',   icon: CheckCircle,   color: 'text-green-600',   bg: 'bg-green-100' },
+  needs_human:      { label: '需人工介入', icon: AlertTriangle, color: 'text-orange-600',  bg: 'bg-orange-100' },
+  human_processing: { label: '人工处理中', icon: UserCheck,     color: 'text-purple-600',  bg: 'bg-purple-100' },
+  closed:           { label: '已结案',     icon: CheckCircle,   color: 'text-gray-600',    bg: 'bg-gray-100' },
+  // 兼容旧状态
+  reviewing:        { label: '审核中',     icon: RefreshCw,     color: 'text-blue-600',    bg: 'bg-blue-100' },
+  submitted:        { label: '已提交CBP',  icon: Upload,        color: 'text-purple-600',  bg: 'bg-purple-100' },
+  approved:         { label: '合规通过',   icon: CheckCircle,   color: 'text-green-600',   bg: 'bg-green-100' },
+  rejected:         { label: '已拒绝',     icon: AlertTriangle, color: 'text-red-600',     bg: 'bg-red-100' },
+  analyzed:         { label: '已分析',     icon: Brain,         color: 'text-indigo-600',  bg: 'bg-indigo-100' },
+};
+
+// 状态流转规则
+const STATUS_TRANSITIONS = {
+  pending:          ['ai_analyzing', 'needs_human', 'closed'],
+  ai_analyzing:     ['ai_completed', 'needs_human'],
+  ai_completed:     ['needs_human', 'closed'],
+  needs_human:      ['human_processing', 'closed'],
+  human_processing: ['needs_human', 'closed'],
+  closed:           ['needs_human'],
+};
 
 const CaseDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [caseData, setCaseData] = useState(null);
   const [files, setFiles] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -41,8 +76,21 @@ const CaseDetailPage = () => {
   const [scanResult, setScanResult] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
 
+  // P0 新增状态
+  const [statusChanging, setStatusChanging] = useState(false);
+  const [statusReason, setStatusReason] = useState('');
+  const [assigning, setAssigning] = useState(false);
+  const [assignUserId, setAssignUserId] = useState('');
+  const [assignNote, setAssignNote] = useState('');
+  const [usersList, setUsersList] = useState([]);
+  const [overrideMode, setOverrideMode] = useState(false);
+  const [overrideData, setOverrideData] = useState({});
+  const [overrideReason, setOverrideReason] = useState('');
+  const [saving, setSaving] = useState(false);
+
   useEffect(() => {
     fetchCaseData();
+    fetchUsers();
   }, [id]);
 
   const fetchCaseData = async () => {
@@ -59,6 +107,105 @@ const CaseDetailPage = () => {
       setLoading(false);
     }
   };
+
+  const fetchUsers = async () => {
+    try {
+      const { listUsers } = await import('../services/usersApi');
+      const data = await listUsers();
+      setUsersList(Array.isArray(data) ? data : data.users || []);
+    } catch (error) {
+      // 如果 usersApi 不存在，尝试从 api.js 获取
+      try {
+        const response = await fetch(
+          `${import.meta.env.VITE_API_URL || 'https://gtc-ai-platform.onrender.com'}/api/v1/users/`,
+          { headers: { Authorization: `Bearer ${localStorage.getItem('gtc_token')}` } }
+        );
+        if (response.ok) {
+          const data = await response.json();
+          setUsersList(Array.isArray(data) ? data : []);
+        }
+      } catch (e) {
+        console.log('Could not fetch users list');
+      }
+    }
+  };
+
+  // === P0 新增：人工介入操作 ===
+
+  const handleStatusChange = async (newStatus) => {
+    setStatusChanging(true);
+    try {
+      const result = await casesAPI.changeStatus(id, newStatus, statusReason);
+      setCaseData(result);
+      setStatusReason('');
+      alert(`状态已变更为: ${STATUS_CONFIG[newStatus]?.label || newStatus}`);
+    } catch (error) {
+      alert(error.response?.data?.detail || '状态变更失败');
+    } finally {
+      setStatusChanging(false);
+    }
+  };
+
+  const handleAssign = async () => {
+    if (!assignUserId) {
+      alert('请选择分析师');
+      return;
+    }
+    setAssigning(true);
+    try {
+      const result = await casesAPI.assign(id, parseInt(assignUserId), assignNote);
+      setCaseData(result);
+      setAssignUserId('');
+      setAssignNote('');
+      alert('案件已指派');
+    } catch (error) {
+      alert(error.response?.data?.detail || '指派失败');
+    } finally {
+      setAssigning(false);
+    }
+  };
+
+  const handleOverrideSave = async () => {
+    if (!overrideReason.trim()) {
+      alert('请填写覆盖原因');
+      return;
+    }
+    setSaving(true);
+    try {
+      const payload = { override_reason: overrideReason };
+      if (overrideData.risk_score !== undefined && overrideData.risk_score !== '') {
+        payload.risk_score = parseFloat(overrideData.risk_score);
+      }
+      if (overrideData.risk_analysis !== undefined) payload.risk_analysis = overrideData.risk_analysis;
+      if (overrideData.petition_draft !== undefined) payload.petition_draft = overrideData.petition_draft;
+      if (overrideData.ai_summary !== undefined) payload.ai_summary = overrideData.ai_summary;
+      if (overrideData.expert_summary !== undefined) payload.expert_summary = overrideData.expert_summary;
+
+      const result = await casesAPI.humanOverride(id, payload);
+      setCaseData(result);
+      setOverrideMode(false);
+      setOverrideData({});
+      setOverrideReason('');
+      alert('AI分析结果已覆盖');
+    } catch (error) {
+      alert(error.response?.data?.detail || '保存失败');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const startOverrideMode = () => {
+    setOverrideData({
+      risk_score: caseData?.risk_score || '',
+      risk_analysis: caseData?.risk_analysis || '',
+      petition_draft: caseData?.petition_draft || '',
+      ai_summary: caseData?.ai_summary || '',
+      expert_summary: caseData?.expert_summary || '',
+    });
+    setOverrideMode(true);
+  };
+
+  // === 原有操作 ===
 
   const handleFileUpload = async (e) => {
     const file = e.target.files[0];
@@ -128,7 +275,6 @@ const CaseDetailPage = () => {
     }
   };
 
-  // UFLPA 风险扫描
   const handleRiskScan = async () => {
     setScanning(true);
     setScanResult(null);
@@ -137,16 +283,15 @@ const CaseDetailPage = () => {
       setScanResult({ success: true, data: result });
       await fetchCaseData();
     } catch (error) {
-      setScanResult({ 
-        success: false, 
-        message: error.response?.data?.detail?.error || error.response?.data?.detail || 'UFLPA 扫描失败' 
+      setScanResult({
+        success: false,
+        message: error.response?.data?.detail?.error || error.response?.data?.detail || 'UFLPA 扫描失败'
       });
     } finally {
       setScanning(false);
     }
   };
 
-  // 文档预处理
   const handlePreprocess = async (fileId) => {
     setProcessing(true);
     setToolResult(null);
@@ -161,7 +306,6 @@ const CaseDetailPage = () => {
     }
   };
 
-  // 文档分类与抽取
   const handleClassifyExtract = async (fileId) => {
     setProcessing(true);
     setToolResult(null);
@@ -176,9 +320,7 @@ const CaseDetailPage = () => {
     }
   };
 
-  // 一致性校验
   const handleConsistencyCheck = async () => {
-
     setProcessing(true);
     setToolResult(null);
     try {
@@ -192,43 +334,26 @@ const CaseDetailPage = () => {
     }
   };
 
-   // 拖拽上传
-const handleDragOver = (e) => {
-  e.preventDefault();
-  setIsDragging(true);
-};
+  const handleDragOver = (e) => { e.preventDefault(); setIsDragging(true); };
+  const handleDragLeave = (e) => { e.preventDefault(); setIsDragging(false); };
+  const handleDrop = async (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      await filesAPI.upload(id, file);
+      await fetchCaseData();
+    } catch (error) {
+      alert('文件上传失败');
+    } finally {
+      setUploading(false);
+    }
+  };
 
-const handleDragLeave = (e) => {
-  e.preventDefault();
-  setIsDragging(false);
-};
-
-const handleDrop = async (e) => {
-  e.preventDefault();
-  setIsDragging(false);
-  const file = e.dataTransfer.files[0];
-  if (!file) return;
-  
-  setUploading(true);
-  try {
-    await filesAPI.upload(id, file);
-    await fetchCaseData();
-  } catch (error) {
-    alert('文件上传失败');
-  } finally {
-    setUploading(false);
-  }
-};
-   const getStatusConfig = (status) => {
-    const configs = {
-      pending: { label: '待处理', icon: Clock, color: 'text-amber-600', bg: 'bg-amber-100' },
-      reviewing: { label: '审核中', icon: RefreshCw, color: 'text-blue-600', bg: 'bg-blue-100' },
-      submitted: { label: '已提交CBP', icon: Upload, color: 'text-purple-600', bg: 'bg-purple-100' },
-      approved: { label: '合规通过', icon: CheckCircle, color: 'text-green-600', bg: 'bg-green-100' },
-      rejected: { label: '已拒绝', icon: AlertTriangle, color: 'text-red-600', bg: 'bg-red-100' },
-      analyzed: { label: '已分析', icon: Brain, color: 'text-indigo-600', bg: 'bg-indigo-100' },
-    };
-    return configs[status] || configs.pending;
+  const getStatusConfig = (status) => {
+    return STATUS_CONFIG[status] || STATUS_CONFIG.pending;
   };
 
   const getRiskColor = (score) => {
@@ -254,7 +379,294 @@ const handleDrop = async (e) => {
     return configs[level] || configs.UNKNOWN;
   };
 
-  // 渲染风险扫描结果
+  // === 渲染：人工介入 Tab ===
+  const renderHumanTab = () => {
+    const currentStatus = caseData?.status || 'pending';
+    const allowedTransitions = STATUS_TRANSITIONS[currentStatus] || [];
+
+    return (
+      <div className="space-y-6">
+        {/* 状态流转 */}
+        <div className="bg-white border border-gray-200 rounded-xl p-5">
+          <h3 className="font-semibold text-gtc-navy mb-4 flex items-center gap-2">
+            <GitBranch className="w-5 h-5" /> 状态流转
+          </h3>
+          <div className="mb-3">
+            <p className="text-sm text-gray-500 mb-1">当前状态</p>
+            <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full ${getStatusConfig(currentStatus).bg}`}>
+              {(() => { const Icon = getStatusConfig(currentStatus).icon; return <Icon className={`w-4 h-4 ${getStatusConfig(currentStatus).color}`} />; })()}
+              <span className={`font-medium text-sm ${getStatusConfig(currentStatus).color}`}>
+                {getStatusConfig(currentStatus).label}
+              </span>
+            </div>
+          </div>
+
+          {allowedTransitions.length > 0 && (
+            <>
+              <div className="mb-3">
+                <label className="block text-sm text-gray-500 mb-1">变更原因（可选）</label>
+                <input
+                  type="text"
+                  value={statusReason}
+                  onChange={(e) => setStatusReason(e.target.value)}
+                  placeholder="输入变更原因..."
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-gtc-gold focus:border-transparent"
+                />
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {allowedTransitions.map((targetStatus) => {
+                  const config = getStatusConfig(targetStatus);
+                  return (
+                    <button
+                      key={targetStatus}
+                      onClick={() => handleStatusChange(targetStatus)}
+                      disabled={statusChanging}
+                      className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border transition-all hover:shadow-md disabled:opacity-50 ${config.bg} ${config.color} border-current/20`}
+                    >
+                      {statusChanging ? <Loader2 className="w-4 h-4 animate-spin" /> : (() => { const Icon = config.icon; return <Icon className="w-4 h-4" />; })()}
+                      → {config.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* 案件指派 */}
+        <div className="bg-white border border-gray-200 rounded-xl p-5">
+          <h3 className="font-semibold text-gtc-navy mb-4 flex items-center gap-2">
+            <UserPlus className="w-5 h-5" /> 案件指派
+          </h3>
+          {caseData?.assigned_to_user_id && (
+            <div className="mb-3 p-3 bg-purple-50 rounded-lg">
+              <p className="text-sm text-purple-700">
+                当前指派给: <span className="font-medium">
+                  {usersList.find(u => u.id === caseData.assigned_to_user_id)?.full_name
+                    || usersList.find(u => u.id === caseData.assigned_to_user_id)?.email
+                    || `用户 #${caseData.assigned_to_user_id}`}
+                </span>
+              </p>
+            </div>
+          )}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+            <div>
+              <label className="block text-sm text-gray-500 mb-1">选择分析师</label>
+              <select
+                value={assignUserId}
+                onChange={(e) => setAssignUserId(e.target.value)}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-gtc-gold focus:border-transparent"
+              >
+                <option value="">-- 选择 --</option>
+                {usersList.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.full_name || u.email} {u.role_id === 1 ? '(管理员)' : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm text-gray-500 mb-1">指派备注（可选）</label>
+              <input
+                type="text"
+                value={assignNote}
+                onChange={(e) => setAssignNote(e.target.value)}
+                placeholder="备注信息..."
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-gtc-gold focus:border-transparent"
+              />
+            </div>
+          </div>
+          <button
+            onClick={handleAssign}
+            disabled={assigning || !assignUserId}
+            className="inline-flex items-center gap-2 bg-purple-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-purple-700 disabled:opacity-50"
+          >
+            {assigning ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserCheck className="w-4 h-4" />}
+            确认指派
+          </button>
+        </div>
+
+        {/* 人工编辑AI结果 */}
+        <div className="bg-white border border-gray-200 rounded-xl p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-semibold text-gtc-navy flex items-center gap-2">
+              <Edit3 className="w-5 h-5" /> 编辑 AI 分析结果
+            </h3>
+            {!overrideMode ? (
+              <button
+                onClick={startOverrideMode}
+                className="inline-flex items-center gap-2 bg-gtc-gold text-gtc-navy px-4 py-2 rounded-lg text-sm font-medium hover:bg-yellow-500"
+              >
+                <Edit3 className="w-4 h-4" /> 接管编辑
+              </button>
+            ) : (
+              <div className="flex gap-2">
+                <button
+                  onClick={handleOverrideSave}
+                  disabled={saving || !overrideReason.trim()}
+                  className="inline-flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-700 disabled:opacity-50"
+                >
+                  {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                  保存覆盖
+                </button>
+                <button
+                  onClick={() => { setOverrideMode(false); setOverrideData({}); setOverrideReason(''); }}
+                  className="inline-flex items-center gap-2 bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm hover:bg-gray-300"
+                >
+                  <X className="w-4 h-4" /> 取消
+                </button>
+              </div>
+            )}
+          </div>
+
+          {overrideMode ? (
+            <div className="space-y-4">
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                <p className="text-amber-700 text-sm flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4" />
+                  编辑模式：修改将覆盖AI生成的结果，原始数据会被保留在历史记录中。
+                </p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">覆盖原因 *</label>
+                <input
+                  type="text"
+                  value={overrideReason}
+                  onChange={(e) => setOverrideReason(e.target.value)}
+                  placeholder="请说明为什么要覆盖AI分析结果..."
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-gtc-gold focus:border-transparent"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">风险评分 (0-10)</label>
+                <input
+                  type="number"
+                  min="0"
+                  max="10"
+                  step="0.1"
+                  value={overrideData.risk_score || ''}
+                  onChange={(e) => setOverrideData({ ...overrideData, risk_score: e.target.value })}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-gtc-gold focus:border-transparent"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">风险分析</label>
+                <textarea
+                  rows={4}
+                  value={overrideData.risk_analysis || ''}
+                  onChange={(e) => setOverrideData({ ...overrideData, risk_analysis: e.target.value })}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-gtc-gold focus:border-transparent"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">申诉书草稿</label>
+                <textarea
+                  rows={6}
+                  value={overrideData.petition_draft || ''}
+                  onChange={(e) => setOverrideData({ ...overrideData, petition_draft: e.target.value })}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-gtc-gold focus:border-transparent"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">专家意见</label>
+                <textarea
+                  rows={3}
+                  value={overrideData.expert_summary || ''}
+                  onChange={(e) => setOverrideData({ ...overrideData, expert_summary: e.target.value })}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-gtc-gold focus:border-transparent"
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-3 text-sm">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-gray-50 rounded-lg p-3">
+                  <p className="text-gray-500 mb-1">风险评分</p>
+                  <p className="text-lg font-bold text-gtc-navy">{caseData?.risk_score ?? '未分析'}</p>
+                </div>
+                <div className="bg-gray-50 rounded-lg p-3">
+                  <p className="text-gray-500 mb-1">专家意见</p>
+                  <p className="text-gray-700">{caseData?.expert_summary || '暂无'}</p>
+                </div>
+              </div>
+              {caseData?.risk_analysis && (
+                <div className="bg-gray-50 rounded-lg p-3">
+                  <p className="text-gray-500 mb-1">风险分析</p>
+                  <p className="text-gray-700 whitespace-pre-wrap">{caseData.risk_analysis.substring(0, 300)}{caseData.risk_analysis.length > 300 ? '...' : ''}</p>
+                </div>
+              )}
+              <p className="text-gray-400 text-xs">点击"接管编辑"可修改以上AI生成内容</p>
+            </div>
+          )}
+        </div>
+
+        {/* 状态变更历史 */}
+        <div className="bg-white border border-gray-200 rounded-xl p-5">
+          <h3 className="font-semibold text-gtc-navy mb-4 flex items-center gap-2">
+            <History className="w-5 h-5" /> 状态变更历史
+          </h3>
+          {caseData?.status_history && caseData.status_history.length > 0 ? (
+            <div className="space-y-3">
+              {[...caseData.status_history].reverse().map((entry, i) => (
+                <div key={i} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                  <div className="w-2 h-2 mt-2 rounded-full bg-gtc-gold flex-shrink-0"></div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {entry.from_status && (
+                        <>
+                          <span className={`px-2 py-0.5 rounded text-xs font-medium ${getStatusConfig(entry.from_status).bg} ${getStatusConfig(entry.from_status).color}`}>
+                            {getStatusConfig(entry.from_status).label}
+                          </span>
+                          <span className="text-gray-400">→</span>
+                        </>
+                      )}
+                      <span className={`px-2 py-0.5 rounded text-xs font-medium ${getStatusConfig(entry.to_status).bg} ${getStatusConfig(entry.to_status).color}`}>
+                        {getStatusConfig(entry.to_status).label}
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {entry.changed_by_name || `用户 #${entry.changed_by_user_id}`}
+                      {entry.reason && ` — ${entry.reason}`}
+                    </p>
+                    <p className="text-xs text-gray-400">
+                      {entry.timestamp ? new Date(entry.timestamp).toLocaleString('zh-CN') : ''}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-gray-400 text-sm">暂无状态变更记录</p>
+          )}
+        </div>
+
+        {/* 覆盖历史 */}
+        {caseData?.human_override?.history && caseData.human_override.history.length > 0 && (
+          <div className="bg-white border border-gray-200 rounded-xl p-5">
+            <h3 className="font-semibold text-gtc-navy mb-4 flex items-center gap-2">
+              <Edit3 className="w-5 h-5" /> 人工覆盖历史
+            </h3>
+            <div className="space-y-3">
+              {[...caseData.human_override.history].reverse().map((entry, i) => (
+                <div key={i} className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-sm font-medium text-amber-800">{entry.override_by_name}</p>
+                    <p className="text-xs text-amber-600">
+                      {entry.timestamp ? new Date(entry.timestamp).toLocaleString('zh-CN') : ''}
+                    </p>
+                  </div>
+                  <p className="text-sm text-amber-700 mb-1">原因: {entry.override_reason}</p>
+                  <p className="text-xs text-gray-500">修改字段: {Object.keys(entry.human_changes || {}).join(', ')}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // === 渲染：扫描结果 ===
   const renderScanResult = () => {
     if (!scanResult) return null;
 
@@ -311,12 +723,10 @@ const handleDrop = async (e) => {
 
         {result.scanned_entities && result.scanned_entities.length > 0 && (
           <div>
-            <p className="text-sm text-gray-500 mb-2">扫描的实体:</p>
+            <p className="text-sm text-gray-500 mb-2">扫描的实体</p>
             <div className="flex flex-wrap gap-2">
               {result.scanned_entities.map((entity, i) => (
-                <span key={i} className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs">
-                  {entity}
-                </span>
+                <span key={i} className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs">{entity}</span>
               ))}
             </div>
           </div>
@@ -463,7 +873,6 @@ const handleDrop = async (e) => {
     );
   };
 
-  // 渲染工具结果
   const renderToolResult = () => {
     if (!toolResult) return null;
 
@@ -553,13 +962,14 @@ const handleDrop = async (e) => {
       </div>
 
       <div className="bg-white rounded-xl shadow-sm">
-        <div className="border-b border-gray-200 flex gap-8 px-6">
-          {['info', 'files', 'ai'].map((tab) => (
+        <div className="border-b border-gray-200 flex gap-6 px-6 overflow-x-auto">
+          {['info', 'files', 'ai', 'human'].map((tab) => (
             <button key={tab} onClick={() => setActiveTab(tab)}
-              className={`py-4 border-b-2 font-medium ${activeTab === tab ? 'border-gtc-gold text-gtc-navy' : 'border-transparent text-gray-500'}`}>
+              className={`py-4 border-b-2 font-medium whitespace-nowrap ${activeTab === tab ? 'border-gtc-gold text-gtc-navy' : 'border-transparent text-gray-500'}`}>
               {tab === 'info' && '案件信息'}
               {tab === 'files' && '文件管理'}
               {tab === 'ai' && 'AI 分析'}
+              {tab === 'human' && '🧑‍💼 人工介入'}
             </button>
           ))}
         </div>
@@ -582,121 +992,87 @@ const handleDrop = async (e) => {
           )}
 
           {activeTab === 'files' && (
-  <div className="space-y-4">
-    {/* 拖拽上传区域 */}
-    <div
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
-      onDrop={handleDrop}
-      className={`border-2 border-dashed rounded-xl p-6 text-center transition-all ${
-        isDragging 
-          ? 'border-gtc-gold bg-gtc-gold/10 scale-[1.02]' 
-          : 'border-gray-300 hover:border-gtc-gold'
-      }`}
-    >
-      <input
-        type="file"
-        id="file-upload"
-        onChange={handleFileUpload}
-        className="hidden"
-        disabled={uploading}
-      />
-      <label htmlFor="file-upload" className="cursor-pointer block">
-        {uploading ? (
-          <Loader2 className="w-10 h-10 animate-spin mx-auto text-gtc-gold" />
-        ) : (
-          <Upload className={`w-10 h-10 mx-auto ${isDragging ? 'text-gtc-gold' : 'text-gray-400'}`} />
-        )}
-        <p className="mt-2 text-sm text-gray-600">
-          {uploading ? '上传中...' : isDragging ? '松开即可上传' : '拖拽文件到此处，或点击选择文件'}
-        </p>
-        <p className="text-xs text-gray-400 mt-1">支持 PDF、图片、Word 等格式</p>
-      </label>
-    </div>
-
-    {/* 工具按钮 */}
-    <div className="flex items-center gap-3 flex-wrap">
-      <button
-        onClick={handleConsistencyCheck}
-        disabled={processing || files.length === 0}
-        className="inline-flex items-center gap-2 bg-orange-500 text-white px-4 py-2 rounded-xl hover:bg-orange-600 disabled:opacity-50"
-      >
-        {processing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Zap className="w-5 h-5" />}
-        一致性校验
-      </button>
-      <button
-        onClick={handleRiskScan}
-        disabled={scanning}
-        className="inline-flex items-center gap-2 bg-red-500 text-white px-4 py-2 rounded-xl hover:bg-red-600 disabled:opacity-50"
-      >
-        {scanning ? <Loader2 className="w-5 h-5 animate-spin" /> : <Search className="w-5 h-5" />}
-        UFLPA 扫描
-      </button>
-    </div>
-
-    {renderToolResult()}
-    {renderScanResult()}
-
-    {/* 文件列表 */}
-    {files.length > 0 ? (
-      <div className="divide-y">
-        {files.map((file) => (
-          <div key={file.id} className="py-3 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <FileText className="w-5 h-5 text-gtc-navy" />
-              <div>
-                <span className="block">{file.file_name}</span>
-                {file.doc_kind && (
-                  <span className="text-xs text-purple-600 bg-purple-50 px-2 py-0.5 rounded">
-                    {file.doc_kind}
-                  </span>
-                )}
+            <div className="space-y-4">
+              <div
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                className={`border-2 border-dashed rounded-xl p-6 text-center transition-all ${
+                  isDragging ? 'border-gtc-gold bg-gtc-gold/10 scale-[1.02]' : 'border-gray-300 hover:border-gtc-gold'
+                }`}
+              >
+                <input type="file" id="file-upload" onChange={handleFileUpload} className="hidden" disabled={uploading} />
+                <label htmlFor="file-upload" className="cursor-pointer block">
+                  {uploading ? (
+                    <Loader2 className="w-10 h-10 animate-spin mx-auto text-gtc-gold" />
+                  ) : (
+                    <Upload className={`w-10 h-10 mx-auto ${isDragging ? 'text-gtc-gold' : 'text-gray-400'}`} />
+                  )}
+                  <p className="mt-2 text-sm text-gray-600">
+                    {uploading ? '上传中...' : isDragging ? '松开即可上传' : '拖拽文件到此处，或点击选择文件'}
+                  </p>
+                  <p className="text-xs text-gray-400 mt-1">支持 PDF、图片、Word 等格式</p>
+                </label>
               </div>
+
+              <div className="flex items-center gap-3 flex-wrap">
+                <button onClick={handleConsistencyCheck} disabled={processing || files.length === 0}
+                  className="inline-flex items-center gap-2 bg-orange-500 text-white px-4 py-2 rounded-xl hover:bg-orange-600 disabled:opacity-50">
+                  {processing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Zap className="w-5 h-5" />}
+                  一致性校验
+                </button>
+                <button onClick={handleRiskScan} disabled={scanning}
+                  className="inline-flex items-center gap-2 bg-red-500 text-white px-4 py-2 rounded-xl hover:bg-red-600 disabled:opacity-50">
+                  {scanning ? <Loader2 className="w-5 h-5 animate-spin" /> : <Search className="w-5 h-5" />}
+                  UFLPA 扫描
+                </button>
+              </div>
+
+              {renderToolResult()}
+              {renderScanResult()}
+
+              {files.length > 0 ? (
+                <div className="divide-y">
+                  {files.map((file) => (
+                    <div key={file.id} className="py-3 flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <FileText className="w-5 h-5 text-gtc-navy" />
+                        <div>
+                          <span className="block">{file.file_name}</span>
+                          {file.doc_kind && (
+                            <span className="text-xs text-purple-600 bg-purple-50 px-2 py-0.5 rounded">{file.doc_kind}</span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <button onClick={() => handlePreprocess(file.id)} disabled={processing}
+                          className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg disabled:opacity-50" title="预处理">
+                          <RefreshCw className={`w-4 h-4 ${processing ? 'animate-spin' : ''}`} />
+                        </button>
+                        <button onClick={() => handleClassifyExtract(file.id)} disabled={processing}
+                          className="p-2 text-gray-500 hover:text-purple-600 hover:bg-purple-50 rounded-lg disabled:opacity-50" title="分类抽取">
+                          <Brain className="w-4 h-4" />
+                        </button>
+                        <button onClick={() => handleFileDownload(file.id, file.file_name)}
+                          className="p-2 text-gray-500 hover:text-gtc-navy hover:bg-gray-100 rounded-lg" title="下载">
+                          <Download className="w-4 h-4" />
+                        </button>
+                        <button onClick={() => handleFileDelete(file.id)}
+                          className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg" title="删除">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-center text-gray-500 py-8">暂无文件，请上传源文档</p>
+              )}
             </div>
-            <div className="flex items-center gap-1">
-              <button
-                onClick={() => handlePreprocess(file.id)}
-                disabled={processing}
-                className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg disabled:opacity-50"
-                title="预处理"
-              >
-                <RefreshCw className={`w-4 h-4 ${processing ? 'animate-spin' : ''}`} />
-              </button>
-              <button
-                onClick={() => handleClassifyExtract(file.id)}
-                disabled={processing}
-                className="p-2 text-gray-500 hover:text-purple-600 hover:bg-purple-50 rounded-lg disabled:opacity-50"
-                title="分类抽取"
-              >
-                <Brain className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => handleFileDownload(file.id, file.file_name)}
-                className="p-2 text-gray-500 hover:text-gtc-navy hover:bg-gray-100 rounded-lg"
-                title="下载"
-              >
-                <Download className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => handleFileDelete(file.id)}
-                className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg"
-                title="删除"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
-    ) : (
-      <p className="text-center text-gray-500 py-8">暂无文件，请上传溯源文档</p>
-    )}
-  </div>
-)}
+          )}
 
           {activeTab === 'ai' && (
             <div className="space-y-6">
-               {/* Agent 一键智能分析 */}
               <div className="p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl border border-blue-100">
                 <h3 className="text-lg font-semibold text-gray-800 mb-3">Agent 智能分析</h3>
                 <p className="text-sm text-gray-600 mb-4">自动执行完整分析流程：文档预处理 → 字段提取 → 一致性校验 → 风险扫描</p>
@@ -721,9 +1097,9 @@ const handleDrop = async (e) => {
                   UFLPA 黑名单扫描
                 </button>
               </div>
-              
+
               {renderScanResult()}
-              
+
               {aiResult && (
                 <div className={`rounded-xl ${aiResult.type === 'error' ? 'bg-red-50 text-red-600 p-4' : ''}`}>
                   {aiResult.type === 'error' ? (
@@ -749,6 +1125,8 @@ const handleDrop = async (e) => {
               )}
             </div>
           )}
+
+          {activeTab === 'human' && renderHumanTab()}
         </div>
       </div>
     </div>
