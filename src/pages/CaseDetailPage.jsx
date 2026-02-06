@@ -39,6 +39,7 @@ const CaseDetailPage = () => {
   const [processing, setProcessing] = useState(false);
   const [toolResult, setToolResult] = useState(null);
   const [scanResult, setScanResult] = useState(null);
+  const [isDragging, setIsDragging] = useState(false);
 
   useEffect(() => {
     fetchCaseData();
@@ -177,6 +178,7 @@ const CaseDetailPage = () => {
 
   // 一致性校验
   const handleConsistencyCheck = async () => {
+
     setProcessing(true);
     setToolResult(null);
     try {
@@ -190,7 +192,34 @@ const CaseDetailPage = () => {
     }
   };
 
-  const getStatusConfig = (status) => {
+   // 拖拽上传
+const handleDragOver = (e) => {
+  e.preventDefault();
+  setIsDragging(true);
+};
+
+const handleDragLeave = (e) => {
+  e.preventDefault();
+  setIsDragging(false);
+};
+
+const handleDrop = async (e) => {
+  e.preventDefault();
+  setIsDragging(false);
+  const file = e.dataTransfer.files[0];
+  if (!file) return;
+  
+  setUploading(true);
+  try {
+    await filesAPI.upload(id, file);
+    await fetchCaseData();
+  } catch (error) {
+    alert('文件上传失败');
+  } finally {
+    setUploading(false);
+  }
+};
+   const getStatusConfig = (status) => {
     const configs = {
       pending: { label: '待处理', icon: Clock, color: 'text-amber-600', bg: 'bg-amber-100' },
       reviewing: { label: '审核中', icon: RefreshCw, color: 'text-blue-600', bg: 'bg-blue-100' },
@@ -553,89 +582,117 @@ const CaseDetailPage = () => {
           )}
 
           {activeTab === 'files' && (
-            <div className="space-y-4">
-              <div className="flex items-center gap-4 flex-wrap">
-                <label className="inline-flex items-center gap-2 bg-gtc-navy text-white px-4 py-2 rounded-xl cursor-pointer hover:bg-gtc-blue">
-                  {uploading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Upload className="w-5 h-5" />}
-                  上传文件
-                  <input type="file" onChange={handleFileUpload} className="hidden" disabled={uploading} />
-                </label>
-                <button
-                  onClick={handleConsistencyCheck}
-                  disabled={processing || files.length === 0}
-                  className="inline-flex items-center gap-2 bg-orange-500 text-white px-4 py-2 rounded-xl hover:bg-orange-600 disabled:opacity-50"
-                >
-                  {processing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Zap className="w-5 h-5" />}
-                  一致性校验
-                </button>
-                <button
-                  onClick={handleRiskScan}
-                  disabled={scanning}
-                  className="inline-flex items-center gap-2 bg-red-500 text-white px-4 py-2 rounded-xl hover:bg-red-600 disabled:opacity-50"
-                >
-                  {scanning ? <Loader2 className="w-5 h-5 animate-spin" /> : <Search className="w-5 h-5" />}
-                  UFLPA 扫描
-                </button>
+  <div className="space-y-4">
+    {/* 拖拽上传区域 */}
+    <div
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+      className={`border-2 border-dashed rounded-xl p-6 text-center transition-all ${
+        isDragging 
+          ? 'border-gtc-gold bg-gtc-gold/10 scale-[1.02]' 
+          : 'border-gray-300 hover:border-gtc-gold'
+      }`}
+    >
+      <input
+        type="file"
+        id="file-upload"
+        onChange={handleFileUpload}
+        className="hidden"
+        disabled={uploading}
+      />
+      <label htmlFor="file-upload" className="cursor-pointer block">
+        {uploading ? (
+          <Loader2 className="w-10 h-10 animate-spin mx-auto text-gtc-gold" />
+        ) : (
+          <Upload className={`w-10 h-10 mx-auto ${isDragging ? 'text-gtc-gold' : 'text-gray-400'}`} />
+        )}
+        <p className="mt-2 text-sm text-gray-600">
+          {uploading ? '上传中...' : isDragging ? '松开即可上传' : '拖拽文件到此处，或点击选择文件'}
+        </p>
+        <p className="text-xs text-gray-400 mt-1">支持 PDF、图片、Word 等格式</p>
+      </label>
+    </div>
+
+    {/* 工具按钮 */}
+    <div className="flex items-center gap-3 flex-wrap">
+      <button
+        onClick={handleConsistencyCheck}
+        disabled={processing || files.length === 0}
+        className="inline-flex items-center gap-2 bg-orange-500 text-white px-4 py-2 rounded-xl hover:bg-orange-600 disabled:opacity-50"
+      >
+        {processing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Zap className="w-5 h-5" />}
+        一致性校验
+      </button>
+      <button
+        onClick={handleRiskScan}
+        disabled={scanning}
+        className="inline-flex items-center gap-2 bg-red-500 text-white px-4 py-2 rounded-xl hover:bg-red-600 disabled:opacity-50"
+      >
+        {scanning ? <Loader2 className="w-5 h-5 animate-spin" /> : <Search className="w-5 h-5" />}
+        UFLPA 扫描
+      </button>
+    </div>
+
+    {renderToolResult()}
+    {renderScanResult()}
+
+    {/* 文件列表 */}
+    {files.length > 0 ? (
+      <div className="divide-y">
+        {files.map((file) => (
+          <div key={file.id} className="py-3 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <FileText className="w-5 h-5 text-gtc-navy" />
+              <div>
+                <span className="block">{file.file_name}</span>
+                {file.doc_kind && (
+                  <span className="text-xs text-purple-600 bg-purple-50 px-2 py-0.5 rounded">
+                    {file.doc_kind}
+                  </span>
+                )}
               </div>
-
-              {renderToolResult()}
-              {renderScanResult()}
-
-              {files.length > 0 ? (
-                <div className="divide-y">
-                  {files.map((file) => (
-                    <div key={file.id} className="py-3 flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <FileText className="w-5 h-5 text-gtc-navy" />
-                        <div>
-                          <span className="block">{file.file_name}</span>
-                          {file.doc_kind && (
-                            <span className="text-xs text-purple-600 bg-purple-50 px-2 py-0.5 rounded">
-                              {file.doc_kind}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <button
-                          onClick={() => handlePreprocess(file.id)}
-                          disabled={processing}
-                          className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg disabled:opacity-50"
-                          title="预处理"
-                        >
-                          <RefreshCw className={`w-4 h-4 ${processing ? 'animate-spin' : ''}`} />
-                        </button>
-                        <button
-                          onClick={() => handleClassifyExtract(file.id)}
-                          disabled={processing}
-                          className="p-2 text-gray-500 hover:text-purple-600 hover:bg-purple-50 rounded-lg disabled:opacity-50"
-                          title="分类抽取"
-                        >
-                          <Brain className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleFileDownload(file.id, file.file_name)}
-                          className="p-2 text-gray-500 hover:text-gtc-navy hover:bg-gray-100 rounded-lg"
-                          title="下载"
-                        >
-                          <Download className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleFileDelete(file.id)}
-                          className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg"
-                          title="删除"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-center text-gray-500 py-8">暂无文件</p>
-              )}
             </div>
-          )}
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => handlePreprocess(file.id)}
+                disabled={processing}
+                className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg disabled:opacity-50"
+                title="预处理"
+              >
+                <RefreshCw className={`w-4 h-4 ${processing ? 'animate-spin' : ''}`} />
+              </button>
+              <button
+                onClick={() => handleClassifyExtract(file.id)}
+                disabled={processing}
+                className="p-2 text-gray-500 hover:text-purple-600 hover:bg-purple-50 rounded-lg disabled:opacity-50"
+                title="分类抽取"
+              >
+                <Brain className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => handleFileDownload(file.id, file.file_name)}
+                className="p-2 text-gray-500 hover:text-gtc-navy hover:bg-gray-100 rounded-lg"
+                title="下载"
+              >
+                <Download className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => handleFileDelete(file.id)}
+                className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg"
+                title="删除"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    ) : (
+      <p className="text-center text-gray-500 py-8">暂无文件，请上传溯源文档</p>
+    )}
+  </div>
+)}
 
           {activeTab === 'ai' && (
             <div className="space-y-6">
