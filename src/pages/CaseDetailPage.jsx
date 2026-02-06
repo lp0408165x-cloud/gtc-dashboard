@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { casesAPI, filesAPI, aiAPI, toolsAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -30,6 +30,8 @@ import {
   X,
   History,
   UserPlus,
+  MessageSquare,
+  Send,
 } from 'lucide-react';
 
 // 状态配置
@@ -40,7 +42,6 @@ const STATUS_CONFIG = {
   needs_human:      { label: '需人工介入', icon: AlertTriangle, color: 'text-orange-600',  bg: 'bg-orange-100' },
   human_processing: { label: '人工处理中', icon: UserCheck,     color: 'text-purple-600',  bg: 'bg-purple-100' },
   closed:           { label: '已结案',     icon: CheckCircle,   color: 'text-gray-600',    bg: 'bg-gray-100' },
-  // 兼容旧状态
   reviewing:        { label: '审核中',     icon: RefreshCw,     color: 'text-blue-600',    bg: 'bg-blue-100' },
   submitted:        { label: '已提交CBP',  icon: Upload,        color: 'text-purple-600',  bg: 'bg-purple-100' },
   approved:         { label: '合规通过',   icon: CheckCircle,   color: 'text-green-600',   bg: 'bg-green-100' },
@@ -88,10 +89,22 @@ const CaseDetailPage = () => {
   const [overrideReason, setOverrideReason] = useState('');
   const [saving, setSaving] = useState(false);
 
+  // AI聊天状态
+  const [chatMessages, setChatMessages] = useState([]);
+  const [chatInput, setChatInput] = useState('');
+  const [chatLoading, setChatLoading] = useState(false);
+  const [currentEditField, setCurrentEditField] = useState('risk_analysis');
+  const chatEndRef = useRef(null);
+
   useEffect(() => {
     fetchCaseData();
     fetchUsers();
   }, [id]);
+
+  // 自动滚动到聊天底部
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [chatMessages, chatLoading]);
 
   const fetchCaseData = async () => {
     try {
@@ -114,7 +127,6 @@ const CaseDetailPage = () => {
       const data = await listUsers();
       setUsersList(Array.isArray(data) ? data : data.users || []);
     } catch (error) {
-      // 如果 usersApi 不存在，尝试从 api.js 获取
       try {
         const response = await fetch(
           `${import.meta.env.VITE_API_URL || 'https://gtc-ai-platform.onrender.com'}/api/v1/users/`,
@@ -130,7 +142,7 @@ const CaseDetailPage = () => {
     }
   };
 
-  // === P0 新增：人工介入操作 ===
+  // === P0：人工介入操作 ===
 
   const handleStatusChange = async (newStatus) => {
     setStatusChanging(true);
@@ -147,10 +159,7 @@ const CaseDetailPage = () => {
   };
 
   const handleAssign = async () => {
-    if (!assignUserId) {
-      alert('请选择分析师');
-      return;
-    }
+    if (!assignUserId) { alert('请选择分析师'); return; }
     setAssigning(true);
     try {
       const result = await casesAPI.assign(id, parseInt(assignUserId), assignNote);
@@ -166,10 +175,7 @@ const CaseDetailPage = () => {
   };
 
   const handleOverrideSave = async () => {
-    if (!overrideReason.trim()) {
-      alert('请填写覆盖原因');
-      return;
-    }
+    if (!overrideReason.trim()) { alert('请填写覆盖原因'); return; }
     setSaving(true);
     try {
       const payload = { override_reason: overrideReason };
@@ -203,6 +209,47 @@ const CaseDetailPage = () => {
       expert_summary: caseData?.expert_summary || '',
     });
     setOverrideMode(true);
+    setChatMessages([]);
+  };
+
+  // === AI聊天操作 ===
+
+  const handleSendMessage = async () => {
+    if (!chatInput.trim()) return;
+
+    const userMessage = { role: 'user', content: chatInput };
+    const newMessages = [...chatMessages, userMessage];
+    setChatMessages(newMessages);
+    setChatInput('');
+    setChatLoading(true);
+
+    try {
+      const result = await casesAPI.aiChat(
+        id,
+        newMessages.map(m => ({ role: m.role, content: m.content })),
+        currentEditField,
+        overrideData[currentEditField]
+      );
+
+      setChatMessages([
+        ...newMessages,
+        { role: 'assistant', content: result.reply, suggestion: result.suggestion }
+      ]);
+    } catch (error) {
+      setChatMessages([
+        ...newMessages,
+        { role: 'assistant', content: '⚠️ AI聊天失败，请稍后重试。' }
+      ]);
+    } finally {
+      setChatLoading(false);
+    }
+  };
+
+  const handleApplySuggestion = (suggestion) => {
+    setOverrideData({
+      ...overrideData,
+      [currentEditField]: suggestion
+    });
   };
 
   // === 原有操作 ===
@@ -352,9 +399,7 @@ const CaseDetailPage = () => {
     }
   };
 
-  const getStatusConfig = (status) => {
-    return STATUS_CONFIG[status] || STATUS_CONFIG.pending;
-  };
+  const getStatusConfig = (status) => STATUS_CONFIG[status] || STATUS_CONFIG.pending;
 
   const getRiskColor = (score) => {
     if (score >= 7) return { bg: 'bg-red-100', text: 'text-red-700', border: 'border-red-300' };
@@ -510,7 +555,7 @@ const CaseDetailPage = () => {
                   保存覆盖
                 </button>
                 <button
-                  onClick={() => { setOverrideMode(false); setOverrideData({}); setOverrideReason(''); }}
+                  onClick={() => { setOverrideMode(false); setOverrideData({}); setOverrideReason(''); setChatMessages([]); }}
                   className="inline-flex items-center gap-2 bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm hover:bg-gray-300"
                 >
                   <X className="w-4 h-4" /> 取消
@@ -520,61 +565,148 @@ const CaseDetailPage = () => {
           </div>
 
           {overrideMode ? (
-            <div className="space-y-4">
-              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
-                <p className="text-amber-700 text-sm flex items-center gap-2">
-                  <AlertTriangle className="w-4 h-4" />
-                  编辑模式：修改将覆盖AI生成的结果，原始数据会被保留在历史记录中。
-                </p>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {/* 左侧：编辑区 */}
+              <div className="space-y-4">
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                  <p className="text-amber-700 text-sm flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4" />
+                    编辑模式：修改将覆盖AI生成的结果，原始数据会被保留在历史记录中。
+                  </p>
+                </div>
+
+                {/* 字段选择 */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">编辑字段</label>
+                  <select
+                    value={currentEditField}
+                    onChange={(e) => setCurrentEditField(e.target.value)}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                  >
+                    <option value="risk_analysis">风险分析</option>
+                    <option value="petition_draft">申诉书</option>
+                    <option value="expert_summary">专家意见</option>
+                  </select>
+                </div>
+
+                {/* 覆盖原因 */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">覆盖原因 *</label>
+                  <input
+                    type="text"
+                    value={overrideReason}
+                    onChange={(e) => setOverrideReason(e.target.value)}
+                    placeholder="请说明为什么要覆盖AI分析结果..."
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                  />
+                </div>
+
+                {/* 风险评分（仅风险分析字段显示） */}
+                {currentEditField === 'risk_analysis' && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">风险评分 (0-10)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="10"
+                      step="0.1"
+                      value={overrideData.risk_score || ''}
+                      onChange={(e) => setOverrideData({ ...overrideData, risk_score: e.target.value })}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                    />
+                  </div>
+                )}
+
+                {/* 编辑区 */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    {currentEditField === 'risk_analysis' ? '风险分析' :
+                     currentEditField === 'petition_draft' ? '申诉书草稿' : '专家意见'}
+                  </label>
+                  <textarea
+                    rows={currentEditField === 'petition_draft' ? 14 : 10}
+                    value={overrideData[currentEditField] || ''}
+                    onChange={(e) => setOverrideData({ ...overrideData, [currentEditField]: e.target.value })}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono"
+                  />
+                </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">覆盖原因 *</label>
-                <input
-                  type="text"
-                  value={overrideReason}
-                  onChange={(e) => setOverrideReason(e.target.value)}
-                  placeholder="请说明为什么要覆盖AI分析结果..."
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-gtc-gold focus:border-transparent"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">风险评分 (0-10)</label>
-                <input
-                  type="number"
-                  min="0"
-                  max="10"
-                  step="0.1"
-                  value={overrideData.risk_score || ''}
-                  onChange={(e) => setOverrideData({ ...overrideData, risk_score: e.target.value })}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-gtc-gold focus:border-transparent"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">风险分析</label>
-                <textarea
-                  rows={4}
-                  value={overrideData.risk_analysis || ''}
-                  onChange={(e) => setOverrideData({ ...overrideData, risk_analysis: e.target.value })}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-gtc-gold focus:border-transparent"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">申诉书草稿</label>
-                <textarea
-                  rows={6}
-                  value={overrideData.petition_draft || ''}
-                  onChange={(e) => setOverrideData({ ...overrideData, petition_draft: e.target.value })}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-gtc-gold focus:border-transparent"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">专家意见</label>
-                <textarea
-                  rows={3}
-                  value={overrideData.expert_summary || ''}
-                  onChange={(e) => setOverrideData({ ...overrideData, expert_summary: e.target.value })}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-gtc-gold focus:border-transparent"
-                />
+
+              {/* 右侧：AI聊天窗口 */}
+              <div className="flex flex-col h-[620px] border border-gray-300 rounded-lg">
+                <div className="bg-gradient-to-r from-blue-500 to-purple-500 text-white p-3 rounded-t-lg">
+                  <h4 className="font-medium flex items-center gap-2">
+                    <MessageSquare className="w-4 h-4" />
+                    AI 编辑助手
+                  </h4>
+                  <p className="text-xs opacity-90 mt-1">基于案件上下文提供修改建议</p>
+                </div>
+
+                {/* 消息列表 */}
+                <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-gray-50">
+                  {chatMessages.length === 0 && (
+                    <div className="text-center text-gray-400 text-sm mt-8">
+                      <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                      <p>向AI描述你想如何修改文案</p>
+                      <p className="text-xs mt-2">例如："请帮我优化风险分析的语言，使其更专业"</p>
+                    </div>
+                  )}
+
+                  {chatMessages.map((msg, i) => (
+                    <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                      <div className={`max-w-[85%] rounded-lg p-3 ${
+                        msg.role === 'user'
+                          ? 'bg-blue-500 text-white'
+                          : 'bg-white border border-gray-200'
+                      }`}>
+                        <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+
+                        {msg.suggestion && (
+                          <div className="mt-3 pt-3 border-t border-gray-200">
+                            <button
+                              onClick={() => handleApplySuggestion(msg.suggestion)}
+                              className="inline-flex items-center gap-1 bg-green-500 text-white px-3 py-1.5 rounded text-xs hover:bg-green-600 transition-colors"
+                            >
+                              <CheckCircle className="w-3 h-3" />
+                              应用建议到编辑区
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+
+                  {chatLoading && (
+                    <div className="flex justify-start">
+                      <div className="bg-white border border-gray-200 rounded-lg p-3">
+                        <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
+                      </div>
+                    </div>
+                  )}
+                  <div ref={chatEndRef} />
+                </div>
+
+                {/* 输入框 */}
+                <div className="p-3 border-t border-gray-200 bg-white rounded-b-lg">
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={chatInput}
+                      onChange={(e) => setChatInput(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && handleSendMessage()}
+                      placeholder="输入你的修改需求..."
+                      className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                      disabled={chatLoading}
+                    />
+                    <button
+                      onClick={handleSendMessage}
+                      disabled={chatLoading || !chatInput.trim()}
+                      className="bg-blue-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-600 disabled:opacity-50 transition-colors"
+                    >
+                      <Send className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           ) : (
