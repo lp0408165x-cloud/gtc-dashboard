@@ -68,7 +68,8 @@ export const casesAPI = {
     const response = await api.delete(`/cases/${caseId}`);
     return response.data;
   },
-  // P0 新增：人工介入 API
+
+  // === P0：人工介入 API ===
   changeStatus: async (caseId, newStatus, reason = '') => {
     const response = await api.post(`/cases/${caseId}/status`, {
       new_status: newStatus,
@@ -85,6 +86,16 @@ export const casesAPI = {
   },
   humanOverride: async (caseId, overrideData) => {
     const response = await api.post(`/cases/${caseId}/human-override`, overrideData);
+    return response.data;
+  },
+
+  // === NEW: AI辅助编辑聊天 ===
+  aiChat: async (caseId, messages, field = null, currentContent = null) => {
+    const response = await api.post(`/cases/${caseId}/ai-chat`, {
+      messages: messages,
+      field: field,
+      current_content: currentContent,
+    });
     return response.data;
   },
 };
@@ -112,7 +123,7 @@ export const filesAPI = {
   delete: async (fileId) => {
     const response = await api.delete(`/files/${fileId}`);
     return response.data;
-  },  
+  },
 };
 
 export const aiAPI = {
@@ -137,8 +148,8 @@ export const aiAPI = {
     return response.data;
   },
 };
+
 export const toolsAPI = {
-  // 文档预处理
   preprocess: async (fileId, options = {}) => {
     const response = await api.post('/tools/preprocess', {
       file_id: fileId,
@@ -148,8 +159,6 @@ export const toolsAPI = {
     });
     return response.data;
   },
-
-  // 文档分类与字段抽取
   classifyExtract: async (fileId, options = {}) => {
     const response = await api.post('/tools/classify-extract', {
       file_id: fileId,
@@ -158,8 +167,6 @@ export const toolsAPI = {
     });
     return response.data;
   },
-
-  // 一致性校验
   consistencyCheck: async (caseId, options = {}) => {
     const response = await api.post('/tools/consistency-check', {
       case_id: caseId,
@@ -168,7 +175,6 @@ export const toolsAPI = {
     });
     return response.data;
   },
-   // 风险扫描
   riskScan: async (caseId, options = {}) => {
     const response = await api.post('/tools/risk-scan', {
       case_id: caseId,
@@ -177,17 +183,22 @@ export const toolsAPI = {
       match_threshold: options.matchThreshold || 0.55,
     });
     return response.data;
-  }, 
-  // 获取可用工具列表
+  },
   getAvailable: async () => {
     const response = await api.get('/tools/available');
     return response.data;
   },
-
-  // 获取工具健康状态
   getHealth: async () => {
     const response = await api.get('/tools/health');
     return response.data;
   },
 };
+
+export const usersAPI = {
+  list: async (params = {}) => {
+    const response = await api.get('/users/', { params });
+    return response.data;
+  },
+};
+
 export default api;
