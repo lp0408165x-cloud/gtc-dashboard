@@ -76,6 +76,8 @@ const CaseDetailPage = () => {
   const [toolResult, setToolResult] = useState(null);
   const [scanResult, setScanResult] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   // P0 新增状态
   const [statusChanging, setStatusChanging] = useState(false);
@@ -141,7 +143,17 @@ const CaseDetailPage = () => {
       }
     }
   };
-
+  const handleDeleteCase = async () => {
+    setDeleting(true);
+    try {
+      await casesAPI.delete(id);
+      navigate('/cases');
+    } catch (error) {
+      alert(error.response?.data?.detail || '删除失败');
+      setDeleting(false);
+      setShowDeleteConfirm(false);
+    }
+  };
   // === P0：人工介入操作 ===
 
   const handleStatusChange = async (newStatus) => {
@@ -1087,9 +1099,18 @@ const CaseDetailPage = () => {
             {caseData.title || `案件 #${caseData.id}`}
           </h1>
         </div>
-        <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full ${statusConfig.bg}`}>
-          <StatusIcon className={`w-5 h-5 ${statusConfig.color}`} />
-          <span className={`font-medium ${statusConfig.color}`}>{statusConfig.label}</span>
+        <div className="flex items-center gap-3">
+          <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full ${statusConfig.bg}`}>
+            <StatusIcon className={`w-5 h-5 ${statusConfig.color}`} />
+            <span className={`font-medium ${statusConfig.color}`}>{statusConfig.label}</span>
+          </div>
+          <button
+            onClick={() => setShowDeleteConfirm(true)}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-colors text-sm"
+          >
+            <Trash2 className="w-4 h-4" />
+            删除案件
+          </button>
         </div>
       </div>
 
@@ -1261,8 +1282,35 @@ const CaseDetailPage = () => {
           {activeTab === 'human' && renderHumanTab()}
         </div>
       </div>
+    {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 max-w-md w-full mx-4 shadow-xl">
+            <h3 className="text-lg font-bold text-gray-900 mb-2">确认删除</h3>
+            <p className="text-gray-600 mb-6">
+              确定要删除 <span className="font-medium text-red-600">{caseData.title || `案件 #${caseData.id}`}</span> 吗？此操作不可撤销，所有关联文件和分析结果将被永久删除。
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
+                disabled={deleting}
+              >
+                取消
+              </button>
+              <button
+                onClick={handleDeleteCase}
+                disabled={deleting}
+                className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:opacity-50"
+              >
+                {deleting ? '删除中...' : '确认删除'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
 export default CaseDetailPage;
+
