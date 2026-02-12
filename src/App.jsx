@@ -12,6 +12,8 @@ import AcceptInvitePage from './pages/AcceptInvitePage';
 import AnalyticsPage from './pages/AnalyticsPage';
 import SettingsPage from './pages/SettingsPage';
 import SupplyChainReviewPage from './pages/SupplyChainReviewPage';
+import SubscriptionPage from './pages/SubscriptionPage';     // v8 新增
+import ResourcesPage from './pages/ResourcesPage';           // v8 新增
 
 function App() {
   return (
@@ -33,6 +35,8 @@ function App() {
           <Route path="analytics" element={<AnalyticsPage />} />
           <Route path="users" element={<UsersPage />} />
           <Route path="settings" element={<SettingsPage />} />
+          <Route path="subscription" element={<SubscriptionPage />} />   {/* v8 新增 */}
+          <Route path="resources" element={<ResourcesPage />} />         {/* v8 新增 */}
         </Route>
 
         {/* 404 */}
