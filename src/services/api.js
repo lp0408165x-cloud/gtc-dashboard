@@ -68,8 +68,6 @@ export const casesAPI = {
     const response = await api.delete(`/cases/${caseId}`);
     return response.data;
   },
-
-  // === P0：人工介入 API ===
   changeStatus: async (caseId, newStatus, reason = '') => {
     const response = await api.post(`/cases/${caseId}/status`, {
       new_status: newStatus,
@@ -88,8 +86,6 @@ export const casesAPI = {
     const response = await api.post(`/cases/${caseId}/human-override`, overrideData);
     return response.data;
   },
-
-  // === NEW: AI辅助编辑聊天 ===
   aiChat: async (caseId, messages, field = null, currentContent = null) => {
     const response = await api.post(`/cases/${caseId}/ai-chat`, {
       messages: messages,
@@ -197,6 +193,131 @@ export const toolsAPI = {
 export const usersAPI = {
   list: async (params = {}) => {
     const response = await api.get('/users/', { params });
+    return response.data;
+  },
+};
+
+// ============================================================
+// v8 新增：会员订阅 API
+// ============================================================
+export const subscriptionAPI = {
+  // 获取所有套餐
+  getPlans: async () => {
+    const response = await api.get('/subscription/plans');
+    return response.data;
+  },
+  // 获取当前订阅状态
+  getCurrent: async () => {
+    const response = await api.get('/subscription/current');
+    return response.data;
+  },
+  // 创建订阅
+  create: async (plan, paymentMethod = 'bank_transfer', period = 'monthly') => {
+    const response = await api.post('/subscription/create', {
+      plan,
+      payment_method: paymentMethod,
+      period,
+    });
+    return response.data;
+  },
+  // 续费
+  renew: async (period = 'monthly') => {
+    const response = await api.post('/subscription/renew', { period });
+    return response.data;
+  },
+  // 升级套餐
+  upgrade: async (newPlan) => {
+    const response = await api.post('/subscription/upgrade', { new_plan: newPlan });
+    return response.data;
+  },
+  // 取消订阅
+  cancel: async (reason = '') => {
+    const response = await api.post('/subscription/cancel', { reason });
+    return response.data;
+  },
+  // 获取当月用量
+  getUsage: async () => {
+    const response = await api.get('/subscription/usage');
+    return response.data;
+  },
+};
+
+// ============================================================
+// v8 新增：支付 API
+// ============================================================
+export const paymentAPI = {
+  // 查询支付状态
+  getStatus: async (tradeNo) => {
+    const response = await api.get(`/payment/status/${tradeNo}`);
+    return response.data;
+  },
+  // 支付历史
+  getHistory: async (params = {}) => {
+    const response = await api.get('/payment/history', { params });
+    return response.data;
+  },
+};
+
+// ============================================================
+// v8 新增：资料库 API
+// ============================================================
+export const resourcesAPI = {
+  // 获取资料列表
+  list: async (params = {}) => {
+    const response = await api.get('/resources/', { params });
+    return response.data;
+  },
+  // 获取资料详情
+  get: async (resourceId) => {
+    const response = await api.get(`/resources/${resourceId}`);
+    return response.data;
+  },
+  // 下载资料
+  download: async (resourceId) => {
+    const response = await api.get(`/resources/${resourceId}/download`, {
+      responseType: 'blob',
+    });
+    return response.data;
+  },
+  // 上传资料（管理员）
+  upload: async (formData) => {
+    const response = await api.post('/resources/', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  },
+  // 删除资料（管理员）
+  delete: async (resourceId) => {
+    const response = await api.delete(`/resources/${resourceId}`);
+    return response.data;
+  },
+};
+
+// ============================================================
+// v8 新增：AI 客服 API
+// ============================================================
+export const chatAPI = {
+  // 发送消息
+  sendMessage: async (message, sessionId = null) => {
+    const response = await api.post('/chat/message', {
+      message,
+      session_id: sessionId,
+    });
+    return response.data;
+  },
+  // 获取会话列表
+  getSessions: async () => {
+    const response = await api.get('/chat/sessions');
+    return response.data;
+  },
+  // 获取会话消息
+  getMessages: async (sessionId) => {
+    const response = await api.get(`/chat/sessions/${sessionId}/messages`);
+    return response.data;
+  },
+  // 关闭会话
+  closeSession: async (sessionId) => {
+    const response = await api.post(`/chat/sessions/${sessionId}/close`);
     return response.data;
   },
 };
