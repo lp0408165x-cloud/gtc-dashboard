@@ -29,6 +29,16 @@ const PLAN_CONFIG = {
     label: '基础版',
     desc: '适合个人用户和小型企业',
   },
+  pro: {
+    icon: Crown,
+    color: 'text-gtc-gold',
+    bgColor: 'bg-gtc-gold/10',
+    borderColor: 'border-gtc-gold/30',
+    accentColor: 'bg-gtc-gold',
+    label: '专业版',
+    desc: '适合专业合规团队',
+    popular: true,
+  },
   professional: {
     icon: Crown,
     color: 'text-gtc-gold',
@@ -50,6 +60,18 @@ const PLAN_CONFIG = {
   },
 };
 
+// 智能价格转换：如果价格 > 10000 说明是"分"，需要除以100
+function toYuan(price) {
+  if (!price && price !== 0) return 0;
+  return price > 10000 ? Math.round(price / 100) : price;
+}
+
+function formatStorage(mb) {
+  if (!mb || mb === -1) return '无限存储';
+  if (mb >= 1024) return `${Math.round(mb / 1024)} GB 存储`;
+  return `${mb} MB 存储`;
+}
+
 const SubscriptionPage = () => {
   const { user } = useAuth();
   const [plans, setPlans] = useState([]);
@@ -59,7 +81,7 @@ const SubscriptionPage = () => {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [activeTab, setActiveTab] = useState('plans'); // plans | usage | billing
+  const [activeTab, setActiveTab] = useState('plans');
   const [billingPeriod, setBillingPeriod] = useState('monthly');
 
   useEffect(() => {
@@ -80,13 +102,10 @@ const SubscriptionPage = () => {
       if (subRes.status === 'fulfilled') setCurrentSub(subRes.value.subscription || subRes.value);
       if (usageRes.status === 'fulfilled') setUsage(usageRes.value);
 
-      // Load payment history
       try {
         const historyRes = await paymentAPI.getHistory();
         setPaymentHistory(historyRes.payments || historyRes || []);
-      } catch (e) {
-        // Payment history is optional
-      }
+      } catch (e) {}
     } catch (err) {
       setError('加载数据失败，请刷新重试');
       console.error(err);
@@ -153,9 +172,7 @@ const SubscriptionPage = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-white">订阅管理</h1>
-          <p className="text-gray-400 mt-1">
-            管理您的订阅套餐和用量
-          </p>
+          <p className="text-gray-400 mt-1">管理您的订阅套餐和用量</p>
         </div>
         {currentSub && (
           <div className={`px-4 py-2 rounded-lg ${PLAN_CONFIG[currentPlan]?.bgColor || 'bg-gray-700'} ${PLAN_CONFIG[currentPlan]?.borderColor || 'border-gray-600'} border`}>
@@ -195,7 +212,6 @@ const SubscriptionPage = () => {
         ))}
       </div>
 
-      {/* Tab Content */}
       {activeTab === 'plans' && (
         <PlansTab
           plans={plans}
@@ -219,20 +235,24 @@ const SubscriptionPage = () => {
 // Plans Tab
 // ============================================================
 const PlansTab = ({ plans, currentPlan, currentSub, billingPeriod, setBillingPeriod, onSubscribe, onUpgrade, onCancel, actionLoading }) => {
-  const planOrder = ['basic', 'professional', 'enterprise'];
+  // 动态检测数据库中的 plan 名称（可能是 pro 或 professional）
+  const dbPlanNames = plans.map((p) => p.plan);
+  const proPlanKey = dbPlanNames.includes('pro') ? 'pro' : 'professional';
+  const planOrder = ['basic', proPlanKey, 'enterprise'];
+
   const sortedPlans = plans.length > 0
     ? planOrder.map((key) => plans.find((p) => p.plan === key)).filter(Boolean)
     : planOrder.map((key) => ({
         plan: key,
-        price_monthly: key === 'basic' ? 299 : key === 'professional' ? 799 : 1999,
-        price_yearly: key === 'basic' ? 2990 : key === 'professional' ? 7990 : 19990,
-        max_cases_monthly: key === 'basic' ? 10 : key === 'professional' ? 50 : -1,
-        max_ai_analyses_monthly: key === 'basic' ? 20 : key === 'professional' ? 200 : -1,
-        max_storage_mb: key === 'basic' ? 1024 : key === 'professional' ? 10240 : 102400,
-        max_users: key === 'basic' ? 2 : key === 'professional' ? 10 : -1,
+        price_monthly: key === 'basic' ? 299 : key === proPlanKey ? 799 : 1999,
+        price_yearly: key === 'basic' ? 2990 : key === proPlanKey ? 7990 : 19990,
+        max_cases_monthly: key === 'basic' ? 10 : key === proPlanKey ? 50 : -1,
+        max_ai_analyses_monthly: key === 'basic' ? 20 : key === proPlanKey ? 200 : -1,
+        max_storage_mb: key === 'basic' ? 1024 : key === proPlanKey ? 10240 : 102400,
+        max_users: key === 'basic' ? 2 : key === proPlanKey ? 10 : -1,
         features: key === 'basic'
           ? { basic_analysis: true, risk_scan: true }
-          : key === 'professional'
+          : key === proPlanKey
           ? { basic_analysis: true, risk_scan: true, petition_gen: true, supply_chain: true, resources: true }
           : { basic_analysis: true, risk_scan: true, petition_gen: true, supply_chain: true, resources: true, priority_support: true, custom_api: true },
       }));
@@ -243,28 +263,16 @@ const PlansTab = ({ plans, currentPlan, currentSub, billingPeriod, setBillingPer
     <div className="space-y-6">
       {/* Billing Period Toggle */}
       <div className="flex items-center justify-center gap-3">
-        <span className={`text-sm ${billingPeriod === 'monthly' ? 'text-white font-medium' : 'text-gray-400'}`}>
-          月付
-        </span>
+        <span className={`text-sm ${billingPeriod === 'monthly' ? 'text-white font-medium' : 'text-gray-400'}`}>月付</span>
         <button
           onClick={() => setBillingPeriod(billingPeriod === 'monthly' ? 'yearly' : 'monthly')}
-          className={`relative w-14 h-7 rounded-full transition-colors ${
-            billingPeriod === 'yearly' ? 'bg-gtc-gold' : 'bg-gray-600'
-          }`}
+          className={`relative w-14 h-7 rounded-full transition-colors ${billingPeriod === 'yearly' ? 'bg-gtc-gold' : 'bg-gray-600'}`}
         >
-          <div
-            className={`absolute top-1 w-5 h-5 rounded-full bg-white transition-transform ${
-              billingPeriod === 'yearly' ? 'translate-x-8' : 'translate-x-1'
-            }`}
-          />
+          <div className={`absolute top-1 w-5 h-5 rounded-full bg-white transition-transform ${billingPeriod === 'yearly' ? 'translate-x-8' : 'translate-x-1'}`} />
         </button>
-        <span className={`text-sm ${billingPeriod === 'yearly' ? 'text-white font-medium' : 'text-gray-400'}`}>
-          年付
-        </span>
+        <span className={`text-sm ${billingPeriod === 'yearly' ? 'text-white font-medium' : 'text-gray-400'}`}>年付</span>
         {billingPeriod === 'yearly' && (
-          <span className="text-xs bg-green-500/20 text-green-400 px-2 py-1 rounded-full">
-            省 17%
-          </span>
+          <span className="text-xs bg-green-500/20 text-green-400 px-2 py-1 rounded-full">省 17%</span>
         )}
       </div>
 
@@ -277,125 +285,76 @@ const PlansTab = ({ plans, currentPlan, currentSub, billingPeriod, setBillingPer
           const planIndex = planOrder.indexOf(plan.plan);
           const isUpgrade = planIndex > currentPlanIndex && currentPlan !== 'free';
           const isDowngrade = planIndex < currentPlanIndex;
-          const price = billingPeriod === 'yearly'
-            ? Math.round((plan.price_yearly || plan.price_monthly * 10) / 12)
-            : plan.price_monthly;
+
+          const rawMonthly = plan.price_monthly || 0;
+          const rawYearly = plan.price_yearly || rawMonthly * 10;
+          const monthlyYuan = toYuan(rawMonthly);
+          const yearlyYuan = toYuan(rawYearly);
+          const price = billingPeriod === 'yearly' ? Math.round(yearlyYuan / 12) : monthlyYuan;
 
           return (
             <div
               key={plan.plan}
               className={`relative rounded-2xl border p-6 transition-all hover:scale-[1.02] ${
-                config.popular
-                  ? `${config.borderColor} border-2 shadow-lg shadow-gtc-gold/10`
-                  : 'border-white/10'
+                config.popular ? `${config.borderColor} border-2 shadow-lg shadow-gtc-gold/10` : 'border-white/10'
               } ${isCurrentPlan ? 'ring-2 ring-gtc-gold/50' : ''} bg-white/5`}
             >
               {config.popular && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 bg-gtc-gold text-gtc-navy text-xs font-bold rounded-full">
-                  推荐
-                </div>
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 bg-gtc-gold text-gtc-navy text-xs font-bold rounded-full">推荐</div>
               )}
-
               {isCurrentPlan && (
-                <div className="absolute -top-3 right-4 px-3 py-1 bg-green-500 text-white text-xs font-bold rounded-full">
-                  当前方案
-                </div>
+                <div className="absolute -top-3 right-4 px-3 py-1 bg-green-500 text-white text-xs font-bold rounded-full">当前方案</div>
               )}
 
-              {/* Plan Header */}
               <div className="flex items-center gap-3 mb-4">
                 <div className={`p-2.5 rounded-xl ${config.bgColor}`}>
                   <Icon className={`w-6 h-6 ${config.color}`} />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-white">{config.label}</h3>
+                  <h3 className="text-lg font-bold text-white">{config.label || plan.display_name || plan.plan}</h3>
                   <p className="text-xs text-gray-400">{config.desc}</p>
                 </div>
               </div>
 
-              {/* Price */}
               <div className="mb-6">
                 <div className="flex items-baseline gap-1">
                   <span className="text-3xl font-bold text-white">¥{price}</span>
                   <span className="text-gray-400 text-sm">/月</span>
                 </div>
                 {billingPeriod === 'yearly' && (
-                  <p className="text-xs text-gray-500 mt-1">
-                    年付 ¥{plan.price_yearly || plan.price_monthly * 10}/年
-                  </p>
+                  <p className="text-xs text-gray-500 mt-1">年付 ¥{yearlyYuan}/年</p>
                 )}
               </div>
 
-              {/* Features */}
               <ul className="space-y-3 mb-6">
-                <FeatureItem
-                  icon={FileText}
-                  label={`每月 ${plan.max_cases_monthly === -1 ? '无限' : plan.max_cases_monthly} 个案件`}
-                />
-                <FeatureItem
-                  icon={Brain}
-                  label={`每月 ${plan.max_ai_analyses_monthly === -1 ? '无限' : plan.max_ai_analyses_monthly} 次 AI 分析`}
-                />
-                <FeatureItem
-                  icon={HardDrive}
-                  label={`${plan.max_storage_mb >= 10240 ? Math.round(plan.max_storage_mb / 1024) + ' GB' : plan.max_storage_mb + ' MB'} 存储`}
-                />
-                <FeatureItem
-                  icon={Users}
-                  label={`${plan.max_users === -1 ? '无限' : plan.max_users} 个用户`}
-                />
-                {plan.features?.petition_gen && (
-                  <FeatureItem icon={Check} label="申诉书生成" highlight />
-                )}
-                {plan.features?.supply_chain && (
-                  <FeatureItem icon={Check} label="供应链审查" highlight />
-                )}
-                {plan.features?.resources && (
-                  <FeatureItem icon={Check} label="专业资料库" highlight />
-                )}
-                {plan.features?.priority_support && (
-                  <FeatureItem icon={Check} label="优先技术支持" highlight />
-                )}
-                {plan.features?.custom_api && (
-                  <FeatureItem icon={Check} label="API 接入" highlight />
-                )}
+                <FeatureItem icon={FileText} label={`每月 ${plan.max_cases_monthly === -1 ? '无限' : plan.max_cases_monthly} 个案件`} />
+                <FeatureItem icon={Brain} label={`每月 ${plan.max_ai_analyses_monthly === -1 ? '无限' : plan.max_ai_analyses_monthly} 次 AI 分析`} />
+                <FeatureItem icon={HardDrive} label={formatStorage(plan.max_storage_mb)} />
+                <FeatureItem icon={Users} label={`${plan.max_users === -1 ? '无限' : plan.max_users} 个用户`} />
+                {plan.features?.petition_gen && <FeatureItem icon={Check} label="申诉书生成" highlight />}
+                {plan.features?.supply_chain && <FeatureItem icon={Check} label="供应链审查" highlight />}
+                {plan.features?.resources && <FeatureItem icon={Check} label="专业资料库" highlight />}
+                {plan.features?.priority_support && <FeatureItem icon={Check} label="优先技术支持" highlight />}
+                {plan.features?.custom_api && <FeatureItem icon={Check} label="API 接入" highlight />}
               </ul>
 
-              {/* Action Button */}
               {isCurrentPlan ? (
-                <button
-                  onClick={() => onCancel()}
-                  disabled={actionLoading}
-                  className="w-full py-3 rounded-xl border border-red-500/30 text-red-400 hover:bg-red-500/10 transition-all text-sm"
-                >
+                <button onClick={() => onCancel()} disabled={actionLoading} className="w-full py-3 rounded-xl border border-red-500/30 text-red-400 hover:bg-red-500/10 transition-all text-sm">
                   取消订阅
                 </button>
               ) : isDowngrade ? (
-                <button
-                  disabled
-                  className="w-full py-3 rounded-xl bg-gray-700 text-gray-500 cursor-not-allowed text-sm"
-                >
-                  不支持降级
-                </button>
+                <button disabled className="w-full py-3 rounded-xl bg-gray-700 text-gray-500 cursor-not-allowed text-sm">不支持降级</button>
               ) : (
                 <button
                   onClick={() => (isUpgrade ? onUpgrade(plan.plan) : onSubscribe(plan.plan))}
                   disabled={actionLoading}
                   className={`w-full py-3 rounded-xl font-medium transition-all text-sm ${
-                    config.popular
-                      ? 'bg-gtc-gold text-gtc-navy hover:bg-gtc-gold/90'
-                      : `${config.bgColor} ${config.color} hover:opacity-80 border ${config.borderColor}`
+                    config.popular ? 'bg-gtc-gold text-gtc-navy hover:bg-gtc-gold/90' : `${config.bgColor} ${config.color} hover:opacity-80 border ${config.borderColor}`
                   } disabled:opacity-50`}
                 >
-                  {actionLoading ? (
-                    <Loader2 className="w-4 h-4 animate-spin mx-auto" />
-                  ) : isUpgrade ? (
-                    <span className="flex items-center justify-center gap-1">
-                      升级 <ArrowUpRight className="w-4 h-4" />
-                    </span>
-                  ) : (
-                    '立即订阅'
-                  )}
+                  {actionLoading ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : isUpgrade ? (
+                    <span className="flex items-center justify-center gap-1">升级 <ArrowUpRight className="w-4 h-4" /></span>
+                  ) : '立即订阅'}
                 </button>
               )}
             </div>
@@ -403,36 +362,20 @@ const PlansTab = ({ plans, currentPlan, currentSub, billingPeriod, setBillingPer
         })}
       </div>
 
-      {/* Payment Methods Info */}
       <div className="bg-white/5 border border-white/10 rounded-xl p-6">
         <h3 className="text-white font-medium mb-3">支付方式</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="flex items-center gap-3 p-3 rounded-lg bg-white/5">
-            <div className="w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center text-blue-400 text-lg font-bold">
-              支
-            </div>
-            <div>
-              <p className="text-white text-sm font-medium">支付宝</p>
-              <p className="text-gray-500 text-xs">即将支持</p>
-            </div>
+            <div className="w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center text-blue-400 text-lg font-bold">支</div>
+            <div><p className="text-white text-sm font-medium">支付宝</p><p className="text-gray-500 text-xs">即将支持</p></div>
           </div>
           <div className="flex items-center gap-3 p-3 rounded-lg bg-white/5">
-            <div className="w-10 h-10 bg-green-500/20 rounded-lg flex items-center justify-center text-green-400 text-lg font-bold">
-              微
-            </div>
-            <div>
-              <p className="text-white text-sm font-medium">微信支付</p>
-              <p className="text-gray-500 text-xs">即将支持</p>
-            </div>
+            <div className="w-10 h-10 bg-green-500/20 rounded-lg flex items-center justify-center text-green-400 text-lg font-bold">微</div>
+            <div><p className="text-white text-sm font-medium">微信支付</p><p className="text-gray-500 text-xs">即将支持</p></div>
           </div>
           <div className="flex items-center gap-3 p-3 rounded-lg bg-white/5">
-            <div className="w-10 h-10 bg-gtc-gold/20 rounded-lg flex items-center justify-center">
-              <Building2 className="w-5 h-5 text-gtc-gold" />
-            </div>
-            <div>
-              <p className="text-white text-sm font-medium">对公转账</p>
-              <p className="text-green-400 text-xs">已支持</p>
-            </div>
+            <div className="w-10 h-10 bg-gtc-gold/20 rounded-lg flex items-center justify-center"><Building2 className="w-5 h-5 text-gtc-gold" /></div>
+            <div><p className="text-white text-sm font-medium">对公转账</p><p className="text-green-400 text-xs">已支持</p></div>
           </div>
         </div>
       </div>
@@ -447,40 +390,13 @@ const FeatureItem = ({ icon: Icon, label, highlight }) => (
   </li>
 );
 
-// ============================================================
-// Usage Tab
-// ============================================================
 const UsageTab = ({ usage, currentPlan }) => {
-  const config = PLAN_CONFIG[currentPlan] || {};
-
-  const usageItems = usage
-    ? [
-        {
-          label: '本月案件数',
-          used: usage.cases_used || 0,
-          limit: usage.cases_limit || 0,
-          icon: FileText,
-        },
-        {
-          label: 'AI 分析次数',
-          used: usage.ai_used || 0,
-          limit: usage.ai_limit || 0,
-          icon: Brain,
-        },
-        {
-          label: '存储空间 (MB)',
-          used: usage.storage_used_mb || 0,
-          limit: usage.storage_limit_mb || 0,
-          icon: HardDrive,
-        },
-        {
-          label: '团队成员',
-          used: usage.users_count || 1,
-          limit: usage.users_limit || 1,
-          icon: Users,
-        },
-      ]
-    : [];
+  const usageItems = usage ? [
+    { label: '本月案件数', used: usage.cases_used || 0, limit: usage.cases_limit || 0, icon: FileText },
+    { label: 'AI 分析次数', used: usage.ai_used || 0, limit: usage.ai_limit || 0, icon: Brain },
+    { label: '存储空间 (MB)', used: usage.storage_used_mb || 0, limit: usage.storage_limit_mb || 0, icon: HardDrive },
+    { label: '团队成员', used: usage.users_count || 1, limit: usage.users_limit || 1, icon: Users },
+  ] : [];
 
   return (
     <div className="space-y-6">
@@ -493,31 +409,18 @@ const UsageTab = ({ usage, currentPlan }) => {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {usageItems.map((item) => {
-            const percentage = item.limit === -1 ? 0 : item.limit > 0 ? Math.round((item.used / item.limit) * 100) : 0;
-            const isOverLimit = item.limit !== -1 && percentage >= 90;
-
+            const pct = item.limit === -1 ? 0 : item.limit > 0 ? Math.round((item.used / item.limit) * 100) : 0;
+            const over = item.limit !== -1 && pct >= 90;
             return (
               <div key={item.label} className="bg-white/5 border border-white/10 rounded-xl p-6">
                 <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    <item.icon className="w-5 h-5 text-gray-400" />
-                    <span className="text-white font-medium">{item.label}</span>
-                  </div>
-                  <span className={`text-sm font-mono ${isOverLimit ? 'text-red-400' : 'text-gray-400'}`}>
-                    {item.used} / {item.limit === -1 ? '∞' : item.limit}
-                  </span>
+                  <div className="flex items-center gap-3"><item.icon className="w-5 h-5 text-gray-400" /><span className="text-white font-medium">{item.label}</span></div>
+                  <span className={`text-sm font-mono ${over ? 'text-red-400' : 'text-gray-400'}`}>{item.used} / {item.limit === -1 ? '∞' : item.limit}</span>
                 </div>
                 <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden">
-                  <div
-                    className={`h-full rounded-full transition-all ${
-                      isOverLimit ? 'bg-red-500' : percentage > 70 ? 'bg-yellow-500' : 'bg-gtc-gold'
-                    }`}
-                    style={{ width: item.limit === -1 ? '5%' : `${Math.min(percentage, 100)}%` }}
-                  />
+                  <div className={`h-full rounded-full transition-all ${over ? 'bg-red-500' : pct > 70 ? 'bg-yellow-500' : 'bg-gtc-gold'}`} style={{ width: item.limit === -1 ? '5%' : `${Math.min(pct, 100)}%` }} />
                 </div>
-                {item.limit === -1 && (
-                  <p className="text-xs text-gray-500 mt-2">无限制</p>
-                )}
+                {item.limit === -1 && <p className="text-xs text-gray-500 mt-2">无限制</p>}
               </div>
             );
           })}
@@ -527,9 +430,6 @@ const UsageTab = ({ usage, currentPlan }) => {
   );
 };
 
-// ============================================================
-// Billing Tab
-// ============================================================
 const BillingTab = ({ payments }) => {
   const statusMap = {
     paid: { label: '已支付', color: 'text-green-400 bg-green-500/10' },
@@ -562,19 +462,11 @@ const BillingTab = ({ payments }) => {
                 const status = statusMap[payment.status] || statusMap.pending;
                 return (
                   <tr key={payment.id} className="border-b border-white/5 hover:bg-white/5">
-                    <td className="p-4 text-gray-300 text-sm font-mono">
-                      {payment.trade_no?.slice(0, 16) || '-'}
-                    </td>
-                    <td className="p-4 text-white font-medium">¥{payment.amount}</td>
+                    <td className="p-4 text-gray-300 text-sm font-mono">{payment.trade_no?.slice(0, 16) || '-'}</td>
+                    <td className="p-4 text-white font-medium">¥{toYuan(payment.amount)}</td>
                     <td className="p-4 text-gray-400 text-sm">{payment.payment_method || '-'}</td>
-                    <td className="p-4">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${status.color}`}>
-                        {status.label}
-                      </span>
-                    </td>
-                    <td className="p-4 text-gray-400 text-sm">
-                      {payment.created_at ? new Date(payment.created_at).toLocaleDateString('zh-CN') : '-'}
-                    </td>
+                    <td className="p-4"><span className={`px-2 py-1 rounded-full text-xs font-medium ${status.color}`}>{status.label}</span></td>
+                    <td className="p-4 text-gray-400 text-sm">{payment.created_at ? new Date(payment.created_at).toLocaleDateString('zh-CN') : '-'}</td>
                   </tr>
                 );
               })}
@@ -587,4 +479,3 @@ const BillingTab = ({ payments }) => {
 };
 
 export default SubscriptionPage;
-
