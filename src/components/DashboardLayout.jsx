@@ -2,6 +2,7 @@ import { Outlet, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Sidebar from './Sidebar';
 import { Bell, Search } from 'lucide-react';
+import AIChatWidget from './AIChatWidget';
 
 const DashboardLayout = () => {
   const { isAuthenticated, loading, user } = useAuth();
@@ -60,6 +61,7 @@ const DashboardLayout = () => {
           <Outlet />
         </main>
       </div>
+      <AIChatWidget />
     </div>
   );
 };
