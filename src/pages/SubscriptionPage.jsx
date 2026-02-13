@@ -15,6 +15,8 @@ import {
   HardDrive,
   Users,
   Brain,
+  Clock,
+  Info,
 } from 'lucide-react';
 
 const PLAN_CONFIG = {
@@ -24,7 +26,6 @@ const PLAN_CONFIG = {
     bgColor: 'bg-blue-50',
     borderColor: 'border-blue-200',
     btnBg: 'bg-blue-600 hover:bg-blue-700 text-white',
-    btnOutline: 'border-blue-300 text-blue-600 hover:bg-blue-50',
     label: '基础版',
     desc: '适合个人用户和小型企业',
   },
@@ -34,7 +35,6 @@ const PLAN_CONFIG = {
     bgColor: 'bg-amber-50',
     borderColor: 'border-gtc-gold/40',
     btnBg: 'bg-gtc-gold hover:bg-yellow-600 text-gtc-navy',
-    btnOutline: 'border-gtc-gold/40 text-gtc-gold hover:bg-amber-50',
     label: '专业版',
     desc: '适合专业合规团队',
     popular: true,
@@ -45,7 +45,6 @@ const PLAN_CONFIG = {
     bgColor: 'bg-amber-50',
     borderColor: 'border-gtc-gold/40',
     btnBg: 'bg-gtc-gold hover:bg-yellow-600 text-gtc-navy',
-    btnOutline: 'border-gtc-gold/40 text-gtc-gold hover:bg-amber-50',
     label: '专业版',
     desc: '适合专业合规团队',
     popular: true,
@@ -56,7 +55,6 @@ const PLAN_CONFIG = {
     bgColor: 'bg-purple-50',
     borderColor: 'border-purple-200',
     btnBg: 'bg-purple-600 hover:bg-purple-700 text-white',
-    btnOutline: 'border-purple-300 text-purple-600 hover:bg-purple-50',
     label: '企业版',
     desc: '适合大型企业和集团',
   },
@@ -113,9 +111,8 @@ const SubscriptionPage = () => {
   const handleSubscribe = async (planKey) => {
     setActionLoading(true);
     try {
-      const result = await subscriptionAPI.create(planKey, 'bank_transfer', billingPeriod);
-      alert(`订阅成功！${result.message || '请按指引完成支付。'}`);
-      loadData();
+      await subscriptionAPI.create(planKey, 'bank_transfer', billingPeriod);
+      await loadData();
     } catch (err) {
       alert(err.response?.data?.detail || '订阅失败，请重试');
     } finally { setActionLoading(false); }
@@ -124,7 +121,7 @@ const SubscriptionPage = () => {
   const handleUpgrade = async (newPlan) => {
     if (!confirm(`确认升级到${PLAN_CONFIG[newPlan]?.label || newPlan}？`)) return;
     setActionLoading(true);
-    try { await subscriptionAPI.upgrade(newPlan); alert('升级成功！'); loadData(); }
+    try { await subscriptionAPI.upgrade(newPlan); await loadData(); }
     catch (err) { alert(err.response?.data?.detail || '升级失败，请重试'); }
     finally { setActionLoading(false); }
   };
@@ -132,7 +129,7 @@ const SubscriptionPage = () => {
   const handleCancel = async () => {
     if (!confirm('确认取消订阅？取消后当前周期内仍可使用。')) return;
     setActionLoading(true);
-    try { await subscriptionAPI.cancel(); alert('已取消订阅'); loadData(); }
+    try { await subscriptionAPI.cancel(); await loadData(); }
     catch (err) { alert(err.response?.data?.detail || '取消失败'); }
     finally { setActionLoading(false); }
   };
@@ -147,6 +144,7 @@ const SubscriptionPage = () => {
   }
 
   const currentPlan = currentSub?.plan || 'free';
+  const subStatus = currentSub?.status; // active, pending, cancelled, expired
 
   return (
     <div className="space-y-6">
@@ -157,13 +155,45 @@ const SubscriptionPage = () => {
           <p className="text-gray-500 mt-1">管理您的订阅套餐和用量</p>
         </div>
         {currentSub && currentPlan !== 'free' && (
-          <div className={`px-4 py-2 rounded-lg ${PLAN_CONFIG[currentPlan]?.bgColor || 'bg-gray-100'} border ${PLAN_CONFIG[currentPlan]?.borderColor || 'border-gray-200'}`}>
-            <span className={`font-medium ${PLAN_CONFIG[currentPlan]?.color || 'text-gray-600'}`}>
-              当前：{PLAN_CONFIG[currentPlan]?.label || '免费版'}
+          <div className={`px-4 py-2 rounded-lg flex items-center gap-2 ${
+            subStatus === 'active' ? `${PLAN_CONFIG[currentPlan]?.bgColor || 'bg-gray-100'} border ${PLAN_CONFIG[currentPlan]?.borderColor || 'border-gray-200'}`
+            : 'bg-yellow-50 border border-yellow-200'
+          }`}>
+            {subStatus === 'pending' && <Clock className="w-4 h-4 text-yellow-600" />}
+            <span className={`font-medium ${
+              subStatus === 'active' ? (PLAN_CONFIG[currentPlan]?.color || 'text-gray-600')
+              : subStatus === 'pending' ? 'text-yellow-700' : 'text-gray-500'
+            }`}>
+              当前：{PLAN_CONFIG[currentPlan]?.label || currentPlan}
+              {subStatus === 'pending' && ' (待付款)'}
+              {subStatus === 'cancelled' && ' (已取消)'}
             </span>
           </div>
         )}
       </div>
+
+      {/* Pending Payment Notice */}
+      {subStatus === 'pending' && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-5">
+          <div className="flex items-start gap-3">
+            <Info className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="text-amber-800 font-medium mb-2">待付款 — 请完成对公转账</p>
+              <div className="text-amber-700 text-sm space-y-1">
+                <p>您的 <strong>{PLAN_CONFIG[currentPlan]?.label}</strong> 订阅已创建，请按以下信息完成付款：</p>
+                <div className="bg-white/60 rounded-lg p-3 mt-2 space-y-1 text-xs font-mono">
+                  <p>开户行：待配置</p>
+                  <p>账　号：待配置</p>
+                  <p>户　名：GTC-AI GLOBAL</p>
+                  <p>金　额：¥{toYuan(plans.find(p => p.plan === currentPlan)?.price_monthly || 0)}/月</p>
+                  <p>备　注：请注明公司名称和订阅计划</p>
+                </div>
+                <p className="mt-2 text-xs text-amber-600">付款后请联系客服确认，我们会在 1 个工作日内激活您的订阅。</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-center gap-3">
@@ -195,7 +225,7 @@ const SubscriptionPage = () => {
       </div>
 
       {activeTab === 'plans' && (
-        <PlansTab plans={plans} currentPlan={currentPlan} currentSub={currentSub}
+        <PlansTab plans={plans} currentPlan={currentPlan} currentSub={currentSub} subStatus={subStatus}
           billingPeriod={billingPeriod} setBillingPeriod={setBillingPeriod}
           onSubscribe={handleSubscribe} onUpgrade={handleUpgrade} onCancel={handleCancel} actionLoading={actionLoading} />
       )}
@@ -208,7 +238,7 @@ const SubscriptionPage = () => {
 // ============================================================
 // Plans Tab
 // ============================================================
-const PlansTab = ({ plans, currentPlan, currentSub, billingPeriod, setBillingPeriod, onSubscribe, onUpgrade, onCancel, actionLoading }) => {
+const PlansTab = ({ plans, currentPlan, currentSub, subStatus, billingPeriod, setBillingPeriod, onSubscribe, onUpgrade, onCancel, actionLoading }) => {
   const dbPlanNames = plans.map((p) => p.plan);
   const proPlanKey = dbPlanNames.includes('pro') ? 'pro' : 'professional';
   const planOrder = ['basic', proPlanKey, 'enterprise'];
@@ -231,6 +261,7 @@ const PlansTab = ({ plans, currentPlan, currentSub, billingPeriod, setBillingPer
       }));
 
   const currentPlanIndex = planOrder.indexOf(currentPlan);
+  const hasSub = subStatus === 'active' || subStatus === 'pending';
 
   return (
     <div className="space-y-6">
@@ -254,10 +285,10 @@ const PlansTab = ({ plans, currentPlan, currentSub, billingPeriod, setBillingPer
         {sortedPlans.map((plan) => {
           const config = PLAN_CONFIG[plan.plan] || {};
           const Icon = config.icon || Zap;
-          const isCurrentPlan = plan.plan === currentPlan;
+          const isCurrentPlan = plan.plan === currentPlan && hasSub;
           const planIndex = planOrder.indexOf(plan.plan);
-          const isUpgrade = planIndex > currentPlanIndex && currentPlan !== 'free';
-          const isDowngrade = planIndex < currentPlanIndex;
+          const isUpgrade = hasSub && planIndex > currentPlanIndex;
+          const isDowngrade = hasSub && planIndex < currentPlanIndex;
 
           const monthlyYuan = toYuan(plan.price_monthly || 0);
           const yearlyYuan = toYuan(plan.price_yearly || (plan.price_monthly || 0) * 10);
@@ -267,25 +298,20 @@ const PlansTab = ({ plans, currentPlan, currentSub, billingPeriod, setBillingPer
             <div
               key={plan.plan}
               className={`relative bg-white rounded-2xl border-2 p-6 transition-all hover:shadow-lg ${
-                config.popular
-                  ? `${config.borderColor} shadow-md`
-                  : isCurrentPlan
-                  ? 'border-green-300 shadow-md'
-                  : 'border-gray-200 hover:border-gray-300'
+                config.popular ? `${config.borderColor} shadow-md` : isCurrentPlan ? 'border-green-300 shadow-md' : 'border-gray-200 hover:border-gray-300'
               }`}
             >
-              {config.popular && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 bg-gtc-gold text-gtc-navy text-xs font-bold rounded-full shadow">
-                  推荐
-                </div>
+              {config.popular && !isCurrentPlan && (
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 bg-gtc-gold text-gtc-navy text-xs font-bold rounded-full shadow">推荐</div>
               )}
               {isCurrentPlan && (
-                <div className="absolute -top-3 right-4 px-3 py-1 bg-green-500 text-white text-xs font-bold rounded-full shadow">
-                  当前方案
+                <div className={`absolute -top-3 right-4 px-3 py-1 text-white text-xs font-bold rounded-full shadow ${
+                  subStatus === 'pending' ? 'bg-yellow-500' : 'bg-green-500'
+                }`}>
+                  {subStatus === 'pending' ? '待付款' : '当前方案'}
                 </div>
               )}
 
-              {/* Plan Header */}
               <div className="flex items-center gap-3 mb-4">
                 <div className={`p-2.5 rounded-xl ${config.bgColor}`}>
                   <Icon className={`w-6 h-6 ${config.color}`} />
@@ -296,7 +322,6 @@ const PlansTab = ({ plans, currentPlan, currentSub, billingPeriod, setBillingPer
                 </div>
               </div>
 
-              {/* Price */}
               <div className="mb-6">
                 <div className="flex items-baseline gap-1">
                   <span className="text-3xl font-bold text-gtc-navy">¥{price}</span>
@@ -307,7 +332,6 @@ const PlansTab = ({ plans, currentPlan, currentSub, billingPeriod, setBillingPer
                 )}
               </div>
 
-              {/* Features */}
               <ul className="space-y-3 mb-6">
                 <FeatureItem icon={FileText} label={`每月 ${plan.max_cases_monthly === -1 ? '无限' : plan.max_cases_monthly} 个案件`} />
                 <FeatureItem icon={Brain} label={`每月 ${plan.max_ai_analyses_monthly === -1 ? '无限' : plan.max_ai_analyses_monthly} 次 AI 分析`} />
@@ -320,11 +344,10 @@ const PlansTab = ({ plans, currentPlan, currentSub, billingPeriod, setBillingPer
                 {plan.features?.custom_api && <FeatureItem icon={Check} label="API 接入" highlight />}
               </ul>
 
-              {/* Action Button */}
               {isCurrentPlan ? (
                 <button onClick={() => onCancel()} disabled={actionLoading}
                   className="w-full py-3 rounded-xl border-2 border-red-200 text-red-500 hover:bg-red-50 transition-all text-sm font-medium">
-                  取消订阅
+                  {subStatus === 'pending' ? '取消订阅' : '取消订阅'}
                 </button>
               ) : isDowngrade ? (
                 <button disabled className="w-full py-3 rounded-xl bg-gray-100 text-gray-400 cursor-not-allowed text-sm">
@@ -411,10 +434,8 @@ const UsageTab = ({ usage, currentPlan }) => {
                   </span>
                 </div>
                 <div className="w-full h-2.5 bg-gray-100 rounded-full overflow-hidden">
-                  <div
-                    className={`h-full rounded-full transition-all ${over ? 'bg-red-500' : pct > 70 ? 'bg-yellow-500' : 'bg-gtc-gold'}`}
-                    style={{ width: item.limit === -1 ? '5%' : `${Math.min(pct, 100)}%` }}
-                  />
+                  <div className={`h-full rounded-full transition-all ${over ? 'bg-red-500' : pct > 70 ? 'bg-yellow-500' : 'bg-gtc-gold'}`}
+                    style={{ width: item.limit === -1 ? '5%' : `${Math.min(pct, 100)}%` }} />
                 </div>
                 {item.limit === -1 && <p className="text-xs text-gray-400 mt-2">无限制</p>}
               </div>
