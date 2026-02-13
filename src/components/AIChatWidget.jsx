@@ -42,7 +42,7 @@ const AIChatWidget = () => {
     setSending(true);
     try {
       const response = await chatAPI.sendMessage(trimmed, sessionId);
-      setMessages((prev) => [...prev, { role: 'assistant', content: response.reply || response.message || '抱歉，暂时无法回复。' }]);
+      setMessages((prev) => [...prev, { role: 'assistant', content: response.content || response.reply || response.message || '抱歉，暂时无法回复。' }]);
       if (response.session_id) setSessionId(response.session_id);
       if (!isOpen) setHasUnread(true);
     } catch (err) {
