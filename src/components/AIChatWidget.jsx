@@ -11,6 +11,59 @@ import {
   Trash2,
 } from 'lucide-react';
 
+// 简易 Markdown 渲染
+function renderMarkdown(text) {
+  if (!text) return '';
+  let html = text
+    // 转义 HTML
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    // 标题
+    .replace(/^#### (.+)$/gm, '<p class="font-semibold text-sm mt-3 mb-1">$1</p>')
+    .replace(/^### (.+)$/gm, '<p class="font-semibold mt-3 mb-1">$1</p>')
+    .replace(/^## (.+)$/gm, '<p class="font-bold mt-3 mb-1">$1</p>')
+    // 加粗
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    // 列表项
+    .replace(/^- (.+)$/gm, '<li class="ml-4 list-disc">$1</li>')
+    .replace(/^(\d+)\. (.+)$/gm, '<li class="ml-4 list-decimal">$2</li>')
+    // 换行
+    .replace(/\n\n/g, '</p><p class="mt-2">')
+    .replace(/\n/g, '<br/>');
+
+  // 包裹连续的 li
+  html = html.replace(/((?:<li[^>]*>.*?<\/li>(?:<br\/>)?)+)/g, '<ul class="my-1 space-y-0.5">$1</ul>');
+  // 清理 ul 内的 br
+  html = html.replace(/<ul([^>]*)>(.*?)<\/ul>/gs, (match, attrs, inner) => {
+    return `<ul${attrs}>${inner.replace(/<br\/>/g, '')}</ul>`;
+  });
+
+  return `<p>${html}</p>`;
+}
+
+const ChatMessage = ({ msg }) => {
+  const isUser = msg.role === 'user';
+
+  return (
+    <div className={`flex gap-2.5 ${isUser ? 'flex-row-reverse' : ''}`}>
+      <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 ${isUser ? 'bg-blue-100' : 'bg-amber-100'}`}>
+        {isUser ? <User className="w-4 h-4 text-blue-600" /> : <Bot className="w-4 h-4 text-gtc-gold" />}
+      </div>
+      {isUser ? (
+        <div className="max-w-[80%] px-3.5 py-2.5 rounded-xl rounded-tr-sm text-sm leading-relaxed bg-blue-600 text-white">
+          {msg.content}
+        </div>
+      ) : (
+        <div
+          className="max-w-[80%] px-3.5 py-2.5 rounded-xl rounded-tl-sm text-sm leading-relaxed bg-white text-gray-700 border border-gray-200 shadow-sm chat-markdown"
+          dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.content) }}
+        />
+      )}
+    </div>
+  );
+};
+
 const AIChatWidget = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([
@@ -42,11 +95,17 @@ const AIChatWidget = () => {
     setSending(true);
     try {
       const response = await chatAPI.sendMessage(trimmed, sessionId);
-      setMessages((prev) => [...prev, { role: 'assistant', content: response.content || response.reply || response.message || '抱歉，暂时无法回复。' }]);
+      setMessages((prev) => [...prev, {
+        role: 'assistant',
+        content: response.content || response.reply || response.message || '抱歉，暂时无法回复。',
+      }]);
       if (response.session_id) setSessionId(response.session_id);
       if (!isOpen) setHasUnread(true);
     } catch (err) {
-      setMessages((prev) => [...prev, { role: 'assistant', content: '网络异常，请稍后重试。如需帮助请发送邮件至 support@gtc-ai-global.com' }]);
+      setMessages((prev) => [...prev, {
+        role: 'assistant',
+        content: '网络异常，请稍后重试。如需帮助请发送邮件至 support@gtc-ai-global.com',
+      }]);
     } finally { setSending(false); }
   };
 
@@ -68,6 +127,14 @@ const AIChatWidget = () => {
 
   return (
     <>
+      {/* Markdown 样式 */}
+      <style>{`
+        .chat-markdown p { margin: 0; }
+        .chat-markdown strong { font-weight: 600; color: #1a1a2e; }
+        .chat-markdown ul { padding-left: 0; }
+        .chat-markdown li { font-size: 0.875rem; line-height: 1.5; }
+      `}</style>
+
       {/* Chat Window */}
       {isOpen && (
         <div className="fixed bottom-24 right-6 w-96 h-[520px] bg-white border border-gray-200 rounded-2xl shadow-2xl flex flex-col z-50 overflow-hidden">
@@ -97,16 +164,7 @@ const AIChatWidget = () => {
           {/* Messages */}
           <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
             {messages.map((msg, idx) => (
-              <div key={idx} className={`flex gap-2.5 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
-                <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 ${msg.role === 'user' ? 'bg-blue-100' : 'bg-amber-100'}`}>
-                  {msg.role === 'user' ? <User className="w-4 h-4 text-blue-600" /> : <Bot className="w-4 h-4 text-gtc-gold" />}
-                </div>
-                <div className={`max-w-[80%] px-3.5 py-2.5 rounded-xl text-sm leading-relaxed ${
-                  msg.role === 'user' ? 'bg-blue-600 text-white rounded-tr-sm' : 'bg-white text-gray-700 rounded-tl-sm border border-gray-200 shadow-sm'
-                }`}>
-                  {msg.content}
-                </div>
-              </div>
+              <ChatMessage key={idx} msg={msg} />
             ))}
             {sending && (
               <div className="flex gap-2.5">
