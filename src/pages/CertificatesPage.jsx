@@ -1,4 +1,4 @@
-aimport React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, Award, Calendar, Shield, ShieldCheck, ShieldX, ExternalLink, Copy, Check
