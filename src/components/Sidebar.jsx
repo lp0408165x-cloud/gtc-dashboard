@@ -14,6 +14,7 @@ import {
   Package,
   CreditCard,   // v8 新增：订阅图标
   BookOpen,      // v8 新增：资料库图标
+  GraduationCap,   // 培训中心图标
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -35,6 +36,8 @@ const Sidebar = () => {
     { path: '/analytics', icon: BarChart3, label: '数据分析' },
     { path: '/resources', icon: BookOpen, label: '资料库' },             // v8 新增
     { path: '/subscription', icon: CreditCard, label: '订阅管理' },      // v8 新增
+    { path: '/training', icon: GraduationCap, label: '培训中心' },
+    { path: '/training/admin', icon: GraduationCap, label: '培训管理' },
     { path: '/users', icon: Users, label: '用户管理' },
     { path: '/settings', icon: Settings, label: '设置' },
   ];
