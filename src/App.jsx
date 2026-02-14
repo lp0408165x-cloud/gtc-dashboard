@@ -14,6 +14,13 @@ import SettingsPage from './pages/SettingsPage';
 import SupplyChainReviewPage from './pages/SupplyChainReviewPage';
 import SubscriptionPage from './pages/SubscriptionPage';     // v8 新增
 import ResourcesPage from './pages/ResourcesPage';           // v8 新增
+import TrainingCenter from './pages/TrainingCenter';
+import CourseDetail from './pages/CourseDetail';
+import LessonView from './pages/LessonView';
+import ExamPage from './pages/ExamPage';
+import CertificatesPage from './pages/CertificatesPage';
+import TrainingAdmin from './pages/TrainingAdmin';
+
 
 function App() {
   return (
@@ -37,6 +44,13 @@ function App() {
           <Route path="settings" element={<SettingsPage />} />
           <Route path="subscription" element={<SubscriptionPage />} />   {/* v8 新增 */}
           <Route path="resources" element={<ResourcesPage />} />         {/* v8 新增 */}
+          <Route path="training" element={<TrainingCenter />} />
+          <Route path="training/courses/:courseId" element={<CourseDetail />} />
+          <Route path="training/lessons/:lessonId" element={<LessonView />} />
+          <Route path="training/courses/:courseId/exam" element={<ExamPage />} />
+          <Route path="training/certificates" element={<CertificatesPage />} />
+          <Route path="training/admin" element={<TrainingAdmin />} />
+
         </Route>
 
         {/* 404 */}
