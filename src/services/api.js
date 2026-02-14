@@ -321,5 +321,117 @@ export const chatAPI = {
     return response.data;
   },
 };
+   // ============ Training API ============
+const trainingAPI = {
+  // 课程列表
+  getCourses: async (category = '') => {
+    const params = category ? `?category=${category}` : '';
+    const response = await api.get(`/training/courses${params}`);
+    return response.data;
+  },
+
+  // 课程详情
+  getCourseDetail: async (courseId) => {
+    const response = await api.get(`/training/courses/${courseId}`);
+    return response.data;
+  },
+
+  // 报名课程
+  enrollCourse: async (courseId) => {
+    const response = await api.post(`/training/courses/${courseId}/enroll`);
+    return response.data;
+  },
+
+  // 获取课时内容
+  getLesson: async (lessonId) => {
+    const response = await api.get(`/training/lessons/${lessonId}`);
+    return response.data;
+  },
+
+  // 标记课时完成
+  completeLesson: async (lessonId) => {
+    const response = await api.post(`/training/lessons/${lessonId}/complete`);
+    return response.data;
+  },
+
+  // 课程进度
+  getCourseProgress: async (courseId) => {
+    const response = await api.get(`/training/courses/${courseId}/progress`);
+    return response.data;
+  },
+
+  // 获取考试题目
+  getExamQuestions: async (courseId) => {
+    const response = await api.get(`/training/courses/${courseId}/exam`);
+    return response.data;
+  },
+
+  // 提交考试
+  submitExam: async (courseId, answers) => {
+    const response = await api.post(`/training/courses/${courseId}/exam`, { answers });
+    return response.data;
+  },
+
+  // 考试记录
+  getExams: async () => {
+    const response = await api.get('/training/exams');
+    return response.data;
+  },
+
+  // 证书列表
+  getCertificates: async () => {
+    const response = await api.get('/training/certificates');
+    return response.data;
+  },
+
+  // 证书详情
+  getCertificate: async (certId) => {
+    const response = await api.get(`/training/certificates/${certId}`);
+    return response.data;
+  },
+
+  // 验证证书（公开）
+  verifyCertificate: async (certNumber) => {
+    const response = await api.get(`/training/certificates/verify/${certNumber}`);
+    return response.data;
+  },
+
+  // ---- 管理员 ----
+  admin: {
+    createCourse: async (data) => {
+      const response = await api.post('/training/admin/courses', data);
+      return response.data;
+    },
+    updateCourse: async (courseId, data) => {
+      const response = await api.put(`/training/admin/courses/${courseId}`, data);
+      return response.data;
+    },
+    createLesson: async (data) => {
+      const response = await api.post('/training/admin/lessons', data);
+      return response.data;
+    },
+    updateLesson: async (lessonId, data) => {
+      const response = await api.put(`/training/admin/lessons/${lessonId}`, data);
+      return response.data;
+    },
+    createQuestion: async (data) => {
+      const response = await api.post('/training/admin/questions', data);
+      return response.data;
+    },
+    getQuestions: async (moduleCode) => {
+      const response = await api.get(`/training/admin/questions/${moduleCode}`);
+      return response.data;
+    },
+    deleteQuestion: async (questionId) => {
+      const response = await api.delete(`/training/admin/questions/${questionId}`);
+      return response.data;
+    },
+    getStats: async () => {
+      const response = await api.get('/training/admin/stats');
+      return response.data;
+    }
+  }
+};
 
 export default api;
+export { trainingAPI };
