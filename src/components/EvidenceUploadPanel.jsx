@@ -118,7 +118,7 @@ export default function EvidenceUploadPanel({ caseId, caseType, onSlotsLoaded })
           file_name: file.name,
           file_url: uploadData.storage_url || uploadData.url || '',
           file_size: file.size,
-          document_id: uploadData.file_id || uploadData.id || null,
+          document_id: null,
         }),
       });
 
