@@ -290,16 +290,43 @@ function SlotRow({ slot, uploading, onUpload }) {
   const reqCfg = REQ_CONFIG[slot.requirement] || REQ_CONFIG.O;
   const StatusIcon = statusCfg.icon;
 
+ const validateFormat = (file) => {
+    if (!slot.accepted_formats || slot.accepted_formats.length === 0) return true;
+    const ext = file.name.split('.').pop().toUpperCase();
+    const formatMap = {
+      'PDF': ['PDF'],
+      'IMAGE': ['JPG', 'JPEG', 'PNG', 'GIF', 'BMP', 'TIFF'],
+      'EXCEL': ['XLS', 'XLSX', 'CSV'],
+      'WORD': ['DOC', 'DOCX'],
+      'JPG': ['JPG', 'JPEG'],
+      'PNG': ['PNG'],
+      'CSV': ['CSV'],
+    };
+    const allowed = slot.accepted_formats.flatMap(f => formatMap[f.toUpperCase()] || [f.toUpperCase()]);
+    return allowed.includes(ext);
+  };
+
   const handleDrop = (e) => {
     e.preventDefault();
     setDragOver(false);
     const file = e.dataTransfer.files[0];
-    if (file) onUpload(file);
+    if (!file) return;
+    if (!validateFormat(file)) {
+      alert(`格式不符：${slot.label_cn} 仅接受 ${slot.accepted_formats.join(', ')} 格式`);
+      return;
+    }
+    onUpload(file);
   };
 
   const handleFileSelect = (e) => {
     const file = e.target.files[0];
-    if (file) onUpload(file);
+    if (!file) return;
+    if (!validateFormat(file)) {
+      alert(`格式不符：${slot.label_cn} 仅接受 ${slot.accepted_formats.join(', ')} 格式`);
+      e.target.value = '';
+      return;
+    }
+    onUpload(file);
     e.target.value = '';
   };
 
