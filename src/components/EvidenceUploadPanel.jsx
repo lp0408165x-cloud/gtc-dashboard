@@ -107,9 +107,6 @@ export default function EvidenceUploadPanel({ caseId, caseType, onSlotsLoaded })
     setUploadingSlot(slotId);
     try {
       // 1. 上传文件到已有的文件上传接口
-      const formData = new FormData();
-      formData.append('file', file);
-
       const uploadData = await filesAPI.upload(caseId, file);
 
       // 2. 更新槽位状态
