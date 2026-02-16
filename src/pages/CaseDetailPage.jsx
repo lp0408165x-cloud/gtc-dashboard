@@ -1147,6 +1147,10 @@ const CaseDetailPage = () => {
 
           {activeTab === 'files' && (
             <div className="space-y-4">
+              {/* 证据槽位面板 */}
+              <EvidenceUploadPanel caseId={id} caseType={caseData?.case_type} />
+    
+              {/* 原有的拖拽上传区域保留在下面 */}
               <div
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
