@@ -32,7 +32,7 @@ export default function EvidenceUploadPanel({ caseId, caseType, onSlotsLoaded })
   const [uploadingSlot, setUploadingSlot] = useState(null);
   const [initializing, setInitializing] = useState(false);
 
-  const token = localStorage.getItem('token');
+  const token = localStorage.getItem('gtc_token');
   const headers = { 'Authorization': `Bearer ${token}` };
 
   // 获取槽位数据
