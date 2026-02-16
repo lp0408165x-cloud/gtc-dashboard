@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { casesAPI, filesAPI, aiAPI, toolsAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import AgentAnalyzeButton from '../components/AgentAnalyzeButton';
+import EvidenceUploadPanel from '../components/EvidenceUploadPanel';
 import {
   ArrowLeft,
   FileText,
