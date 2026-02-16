@@ -1,353 +1,399 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  Upload, CheckCircle, XCircle, AlertCircle, FileText, Trash2,
-  ChevronDown, ChevronRight, Eye, RefreshCw, Shield, Info
+  Upload, CheckCircle, XCircle, AlertCircle, Clock,
+  ChevronDown, ChevronRight, FileText, Trash2, Eye,
+  Loader2, Shield, RefreshCw
 } from 'lucide-react';
-import api from '../services/api';
+
+const API_URL = import.meta.env.VITE_API_URL;
 
 // 状态配置
-const statusConfig = {
-  empty:    { icon: null,        color: 'border-slate-700/40',     bg: 'bg-slate-900/40',   label: '' },
-  uploaded: { icon: CheckCircle, color: 'border-emerald-500/30',   bg: 'bg-emerald-500/5',  label: '已上传' },
-  verified: { icon: Shield,      color: 'border-blue-500/30',      bg: 'bg-blue-500/5',     label: '已验证' },
-  rejected: { icon: XCircle,     color: 'border-red-500/30',       bg: 'bg-red-500/5',      label: '已退回' },
+const STATUS_CONFIG = {
+  empty: { label: '待上传', labelEn: 'Pending', color: 'text-gray-400', bg: 'bg-gray-50', icon: Clock },
+  uploaded: { label: '已上传', labelEn: 'Uploaded', color: 'text-blue-600', bg: 'bg-blue-50', icon: Upload },
+  verified: { label: '已验证', labelEn: 'Verified', color: 'text-green-600', bg: 'bg-green-50', icon: CheckCircle },
+  rejected: { label: '已拒绝', labelEn: 'Rejected', color: 'text-red-600', bg: 'bg-red-50', icon: XCircle },
+  na: { label: '不适用', labelEn: 'N/A', color: 'text-gray-300', bg: 'bg-gray-50', icon: null },
 };
 
-const reqConfig = {
-  R: { label: '必需', dot: 'bg-red-400',     badge: 'text-red-400 bg-red-500/10 ring-red-500/20' },
-  O: { label: '可选', dot: 'bg-slate-500',   badge: 'text-slate-500 bg-slate-500/10 ring-slate-500/20' },
-  C: { label: '条件', dot: 'bg-amber-400',   badge: 'text-amber-400 bg-amber-500/10 ring-amber-500/20' },
+const REQ_CONFIG = {
+  R: { label: '必需', color: 'text-red-600', bg: 'bg-red-50', border: 'border-red-200' },
+  O: { label: '可选', color: 'text-gray-500', bg: 'bg-gray-50', border: 'border-gray-200' },
+  C: { label: '条件', color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-200' },
 };
 
-// ============================================
-// Main Component
-// ============================================
-export default function EvidenceUploadPanel({ caseId, caseType, readOnly = false }) {
+export default function EvidenceUploadPanel({ caseId, caseType, onSlotsLoaded }) {
   const [slots, setSlots] = useState([]);
-  const [summary, setSummary] = useState(null);
+  const [groups, setGroups] = useState([]);
+  const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [uploading, setUploading] = useState({});
+  const [error, setError] = useState(null);
   const [expandedGroups, setExpandedGroups] = useState({});
-  const [error, setError] = useState('');
+  const [uploadingSlot, setUploadingSlot] = useState(null);
+  const [initializing, setInitializing] = useState(false);
 
-  const loadData = useCallback(async () => {
+  const token = localStorage.getItem('token');
+  const headers = { 'Authorization': `Bearer ${token}` };
+
+  // 获取槽位数据
+  const fetchSlots = useCallback(async () => {
     try {
       setLoading(true);
-      const [slotsRes, summaryRes] = await Promise.all([
-        api.get(`/api/evidence/cases/${caseId}/slots`),
-        api.get(`/api/evidence/cases/${caseId}/summary`)
-      ]);
-      setSlots(slotsRes.data);
-      setSummary(summaryRes.data);
-      // 默认展开所有组
-      const groups = {};
-      slotsRes.data.forEach(s => { groups[s.evidence_group] = true; });
-      setExpandedGroups(prev => Object.keys(prev).length ? prev : groups);
-    } catch (err) {
-      if (err.response?.status === 404) {
-        // 槽位未初始化，尝试初始化
-        try {
-          await api.post(`/api/evidence/cases/${caseId}/init-slots`);
-          return loadData();
-        } catch (initErr) {
-          setError(initErr.response?.data?.detail || '初始化失败');
+      setError(null);
+      const res = await fetch(`${API_URL}/api/v1/evidence/cases/${caseId}/slots`, { headers });
+
+      if (res.status === 404) {
+        // 槽位未初始化，自动初始化
+        if (caseType) {
+          await initSlots();
+          return;
         }
-      } else {
-        setError('加载失败');
+        setError('请先选择案件类型');
+        return;
       }
+
+      if (!res.ok) throw new Error('获取证据槽位失败');
+
+      const data = await res.json();
+      setSlots(data.slots || []);
+      setGroups(data.groups || []);
+      setStats({
+        total: data.total_slots,
+        required: data.required_count,
+        uploaded: data.uploaded_count,
+        verified: data.verified_count,
+        completion: data.completion_pct,
+      });
+
+      // 默认展开有必需文件的组
+      const expanded = {};
+      (data.groups || []).forEach(g => {
+        if (g.empty_required > 0) expanded[g.group_code] = true;
+      });
+      setExpandedGroups(prev => ({ ...expanded, ...prev }));
+
+      if (onSlotsLoaded) onSlotsLoaded(data);
+    } catch (err) {
+      setError(err.message);
     } finally {
       setLoading(false);
     }
-  }, [caseId]);
+  }, [caseId, caseType]);
 
-  useEffect(() => { loadData(); }, [loadData]);
-
-  // 分组
-  const groupedSlots = {};
-  slots.forEach(slot => {
-    const g = slot.evidence_group;
-    if (!groupedSlots[g]) groupedSlots[g] = { name: slot.group_name_cn, slots: [] };
-    groupedSlots[g].slots.push(slot);
-  });
-
-  const toggleGroup = (g) => setExpandedGroups(prev => ({ ...prev, [g]: !prev[g] }));
-
-  // 上传
-  const handleUpload = async (evidenceCode, file) => {
-    setUploading(prev => ({ ...prev, [evidenceCode]: true }));
-    setError('');
+  // 初始化槽位
+  const initSlots = async () => {
     try {
-      const formData = new FormData();
-      formData.append('file', file);
-      await api.post(`/api/evidence/cases/${caseId}/upload/${evidenceCode}`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
+      setInitializing(true);
+      const res = await fetch(`${API_URL}/api/v1/evidence/cases/${caseId}/init-slots`, {
+        method: 'POST',
+        headers: { ...headers, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ case_type: caseType }),
       });
-      await loadData();
+      if (!res.ok) throw new Error('初始化槽位失败');
+      await fetchSlots();
     } catch (err) {
-      setError(err.response?.data?.detail || `上传 ${evidenceCode} 失败`);
+      setError(err.message);
     } finally {
-      setUploading(prev => ({ ...prev, [evidenceCode]: false }));
+      setInitializing(false);
     }
   };
 
-  // 删除
-  const handleRemove = async (evidenceCode) => {
-    if (!window.confirm(`确认移除 ${evidenceCode} 的文件？`)) return;
+  useEffect(() => {
+    if (caseId) fetchSlots();
+  }, [caseId, fetchSlots]);
+
+  // 文件上传处理
+  const handleFileUpload = async (slotId, evidenceCode, file) => {
+    setUploadingSlot(slotId);
     try {
-      await api.delete(`/api/evidence/cases/${caseId}/upload/${evidenceCode}`);
-      await loadData();
+      // 1. 上传文件到已有的文件上传接口
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const uploadRes = await fetch(`${API_URL}/api/v1/files/upload/${caseId}`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+        body: formData,
+      });
+
+      if (!uploadRes.ok) throw new Error('文件上传失败');
+      const uploadData = await uploadRes.json();
+
+      // 2. 更新槽位状态
+      const patchRes = await fetch(`${API_URL}/api/v1/evidence/slots/${slotId}`, {
+        method: 'PATCH',
+        headers: { ...headers, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          status: 'uploaded',
+          file_name: file.name,
+          file_url: uploadData.storage_url || uploadData.url || '',
+          file_size: file.size,
+          document_id: uploadData.file_id || uploadData.id || null,
+        }),
+      });
+
+      if (!patchRes.ok) throw new Error('更新槽位失败');
+
+      await fetchSlots();
     } catch (err) {
-      setError(err.response?.data?.detail || '移除失败');
+      alert(err.message);
+    } finally {
+      setUploadingSlot(null);
     }
+  };
+
+  // 按组分类槽位
+  const groupedSlots = {};
+  slots.forEach(slot => {
+    const gc = slot.group_code;
+    if (!groupedSlots[gc]) groupedSlots[gc] = [];
+    groupedSlots[gc].push(slot);
+  });
+
+  const toggleGroup = (code) => {
+    setExpandedGroups(prev => ({ ...prev, [code]: !prev[code] }));
   };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-16">
-        <div className="w-8 h-8 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin" />
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="w-6 h-6 animate-spin text-blue-500" />
+        <span className="ml-2 text-gray-500">加载证据清单...</span>
+      </div>
+    );
+  }
+
+  if (error && !slots.length) {
+    return (
+      <div className="text-center py-8">
+        <AlertCircle className="w-10 h-10 text-amber-500 mx-auto mb-3" />
+        <p className="text-gray-600 mb-4">{error}</p>
+        {caseType && (
+          <button
+            onClick={initSlots}
+            disabled={initializing}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+          >
+            {initializing ? '初始化中...' : '初始化证据槽位'}
+          </button>
+        )}
       </div>
     );
   }
 
   return (
-    <div className="space-y-5">
-      {/* Summary Bar */}
-      {summary && (
-        <div className="bg-slate-900/60 border border-slate-700/40 rounded-2xl p-5">
+    <div className="space-y-4">
+      {/* 统计摘要 */}
+      {stats && (
+        <div className="bg-white rounded-xl border border-gray-200 p-4">
           <div className="flex items-center justify-between mb-3">
-            <div>
-              <h3 className="text-base font-semibold text-white">证据文件上传</h3>
-              <p className="text-xs text-slate-500 mt-0.5">
-                按标准槽位上传文件，确保AI准确识别
-              </p>
+            <div className="flex items-center gap-2">
+              <Shield className="w-5 h-5 text-blue-600" />
+              <span className="font-semibold text-gray-800">证据完成度</span>
             </div>
-            <button onClick={loadData} className="text-slate-500 hover:text-white transition p-1.5 rounded-lg hover:bg-white/5">
+            <button onClick={fetchSlots} className="text-gray-400 hover:text-gray-600">
               <RefreshCw className="w-4 h-4" />
             </button>
           </div>
 
-          {/* Progress */}
-          <div className="flex items-center gap-4 mb-3">
-            <div className="flex-1">
-              <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+          {/* 进度条 */}
+          <div className="relative h-3 bg-gray-100 rounded-full overflow-hidden mb-3">
+            <div
+              className="absolute left-0 top-0 h-full bg-gradient-to-r from-blue-500 to-green-500 rounded-full transition-all duration-500"
+              style={{ width: `${stats.completion}%` }}
+            />
+          </div>
+
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-gray-500">
+              必需文件: <span className="font-medium text-gray-800">{stats.uploaded}/{stats.required}</span>
+            </span>
+            <span className="font-semibold text-blue-600">{stats.completion}%</span>
+          </div>
+
+          {/* 状态统计 */}
+          <div className="flex gap-4 mt-3 pt-3 border-t border-gray-100">
+            <div className="text-center flex-1">
+              <div className="text-lg font-bold text-gray-800">{stats.total}</div>
+              <div className="text-xs text-gray-400">总计</div>
+            </div>
+            <div className="text-center flex-1">
+              <div className="text-lg font-bold text-red-600">{stats.required}</div>
+              <div className="text-xs text-gray-400">必需</div>
+            </div>
+            <div className="text-center flex-1">
+              <div className="text-lg font-bold text-blue-600">{stats.uploaded}</div>
+              <div className="text-xs text-gray-400">已上传</div>
+            </div>
+            <div className="text-center flex-1">
+              <div className="text-lg font-bold text-green-600">{stats.verified}</div>
+              <div className="text-xs text-gray-400">已验证</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 分组列表 */}
+      {groups.map(group => (
+        <div key={group.group_code} className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          {/* 组头 */}
+          <button
+            onClick={() => toggleGroup(group.group_code)}
+            className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              {expandedGroups[group.group_code]
+                ? <ChevronDown className="w-5 h-5 text-gray-400" />
+                : <ChevronRight className="w-5 h-5 text-gray-400" />
+              }
+              <div className="text-left">
+                <div className="font-semibold text-gray-800">
+                  {group.group_code} – {group.group_name_cn}
+                </div>
+                <div className="text-xs text-gray-400">{group.group_name_en}</div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              {group.empty_required > 0 && (
+                <span className="text-xs px-2 py-1 bg-red-50 text-red-600 rounded-full">
+                  缺 {group.empty_required} 项必需
+                </span>
+              )}
+              <span className="text-sm text-gray-500">
+                {group.uploaded}/{group.total}
+              </span>
+              {/* 组级迷你进度条 */}
+              <div className="w-16 h-1.5 bg-gray-100 rounded-full overflow-hidden">
                 <div
-                  className={`h-full rounded-full transition-all duration-500 ${
-                    summary.completion_percent >= 80
-                      ? 'bg-gradient-to-r from-emerald-500 to-emerald-400'
-                      : summary.completion_percent >= 50
-                        ? 'bg-gradient-to-r from-blue-600 to-blue-400'
-                        : 'bg-gradient-to-r from-amber-500 to-amber-400'
-                  }`}
-                  style={{ width: `${summary.completion_percent}%` }}
+                  className="h-full bg-blue-500 rounded-full"
+                  style={{ width: `${group.total > 0 ? (group.uploaded / group.total * 100) : 0}%` }}
                 />
               </div>
             </div>
-            <span className="text-sm font-bold text-white tabular-nums w-12 text-right">
-              {summary.completion_percent}%
-            </span>
-          </div>
-
-          {/* Stats */}
-          <div className="grid grid-cols-4 gap-3">
-            {[
-              { label: '总槽位', value: summary.total_slots, color: 'text-slate-400' },
-              { label: '必需', value: summary.required_count, color: 'text-amber-400' },
-              { label: '已上传', value: summary.uploaded_count, color: 'text-emerald-400' },
-              { label: 'Gap', value: summary.gap_count, color: summary.gap_count > 0 ? 'text-red-400' : 'text-emerald-400' },
-            ].map((s, i) => (
-              <div key={i} className="bg-white/[0.02] rounded-lg px-3 py-2 text-center">
-                <p className="text-[10px] text-slate-600 uppercase tracking-wider">{s.label}</p>
-                <p className={`text-lg font-bold ${s.color} tabular-nums`}>{s.value}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Error */}
-      {error && (
-        <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center gap-2">
-          <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
-          <span className="text-red-400 text-sm">{error}</span>
-          <button onClick={() => setError('')} className="ml-auto text-red-400/60 hover:text-red-400">
-            <XCircle className="w-4 h-4" />
           </button>
+
+          {/* 组内槽位 */}
+          {expandedGroups[group.group_code] && (
+            <div className="border-t border-gray-100">
+              {(groupedSlots[group.group_code] || []).map(slot => (
+                <SlotRow
+                  key={slot.id}
+                  slot={slot}
+                  uploading={uploadingSlot === slot.id}
+                  onUpload={(file) => handleFileUpload(slot.id, slot.evidence_code, file)}
+                />
+              ))}
+            </div>
+          )}
         </div>
-      )}
-
-      {/* Groups */}
-      {Object.entries(groupedSlots).map(([group, { name, slots: groupSlots }]) => {
-        const groupSummary = summary?.groups?.find(g => g.group === group);
-        const isExpanded = expandedGroups[group];
-
-        return (
-          <div key={group} className="bg-slate-900/60 border border-slate-700/40 rounded-2xl overflow-hidden">
-            {/* Group Header */}
-            <button
-              onClick={() => toggleGroup(group)}
-              className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-white/[0.02] transition"
-            >
-              <div className="flex items-center gap-3">
-                {isExpanded ? <ChevronDown className="w-4 h-4 text-slate-500" /> : <ChevronRight className="w-4 h-4 text-slate-500" />}
-                <span className="text-xs font-bold text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded ring-1 ring-blue-500/20">
-                  {group}
-                </span>
-                <span className="text-sm font-medium text-white">{name}</span>
-              </div>
-              <div className="flex items-center gap-3 text-xs">
-                {groupSummary && (
-                  <>
-                    <span className="text-slate-500">{groupSummary.uploaded}/{groupSummary.total}</span>
-                    {groupSummary.gap > 0 && (
-                      <span className="text-red-400 bg-red-500/10 px-1.5 py-0.5 rounded ring-1 ring-red-500/20">
-                        {groupSummary.gap} Gap
-                      </span>
-                    )}
-                  </>
-                )}
-              </div>
-            </button>
-
-            {/* Slots Grid */}
-            {isExpanded && (
-              <div className="px-5 pb-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-                {groupSlots.map(slot => (
-                  <SlotCard
-                    key={slot.evidence_code}
-                    slot={slot}
-                    uploading={uploading[slot.evidence_code]}
-                    readOnly={readOnly}
-                    onUpload={handleUpload}
-                    onRemove={handleRemove}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-        );
-      })}
+      ))}
     </div>
   );
 }
 
 
-// ============================================
-// Single Slot Card
-// ============================================
-function SlotCard({ slot, uploading, readOnly, onUpload, onRemove }) {
+// 单个槽位行
+function SlotRow({ slot, uploading, onUpload }) {
   const [dragOver, setDragOver] = useState(false);
-  const status = statusConfig[slot.status] || statusConfig.empty;
-  const req = reqConfig[slot.requirement] || reqConfig.O;
-  const StatusIcon = status.icon;
+  const statusCfg = STATUS_CONFIG[slot.status] || STATUS_CONFIG.empty;
+  const reqCfg = REQ_CONFIG[slot.requirement] || REQ_CONFIG.O;
+  const StatusIcon = statusCfg.icon;
 
   const handleDrop = (e) => {
     e.preventDefault();
     setDragOver(false);
     const file = e.dataTransfer.files[0];
-    if (file) onUpload(slot.evidence_code, file);
+    if (file) onUpload(file);
   };
 
   const handleFileSelect = (e) => {
     const file = e.target.files[0];
-    if (file) onUpload(slot.evidence_code, file);
+    if (file) onUpload(file);
     e.target.value = '';
   };
 
+  const inputId = `file-${slot.id}`;
+
   return (
     <div
-      className={`relative rounded-xl border transition-all ${status.color} ${status.bg} ${
-        dragOver ? 'border-blue-400 bg-blue-500/10 scale-[1.02]' : ''
+      className={`flex items-center gap-3 px-4 py-3 border-b border-gray-50 last:border-b-0 transition-colors ${
+        dragOver ? 'bg-blue-50' : 'hover:bg-gray-50'
       }`}
       onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
       onDragLeave={() => setDragOver(false)}
       onDrop={handleDrop}
     >
-      <div className="p-3.5">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] font-mono font-bold text-slate-500">{slot.evidence_code}</span>
-            <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded ring-1 ${req.badge}`}>
-              {req.label}
-            </span>
-          </div>
-          {StatusIcon && (
-            <StatusIcon className={`w-4 h-4 ${
-              slot.status === 'uploaded' ? 'text-emerald-400' :
-              slot.status === 'verified' ? 'text-blue-400' :
-              slot.status === 'rejected' ? 'text-red-400' : 'text-slate-600'
-            }`} />
-          )}
-        </div>
+      {/* 证据编号 */}
+      <div className="w-14 text-xs font-mono text-gray-400 shrink-0">
+        {slot.evidence_code}
+      </div>
 
-        {/* Label */}
-        <h4 className="text-sm font-medium text-white mb-0.5 leading-tight">{slot.label_cn}</h4>
-        <p className="text-[10px] text-slate-600 mb-2">{slot.label_en}</p>
+      {/* 需求标记 */}
+      <span className={`text-xs px-1.5 py-0.5 rounded ${reqCfg.bg} ${reqCfg.color} shrink-0`}>
+        {reqCfg.label}
+      </span>
 
-        {/* Source */}
-        {slot.source_party && (
-          <p className="text-[9px] text-slate-600 mb-2">来源: {slot.source_party}</p>
-        )}
-
-        {/* Condition note */}
-        {slot.requirement === 'C' && slot.condition_note && (
-          <div className="flex items-start gap-1.5 mb-2 p-1.5 bg-amber-500/5 rounded-lg">
-            <Info className="w-3 h-3 text-amber-400/60 mt-0.5 flex-shrink-0" />
-            <span className="text-[9px] text-amber-400/80">{slot.condition_note}</span>
+      {/* 标签 */}
+      <div className="flex-1 min-w-0">
+        <div className="text-sm text-gray-800 truncate">{slot.label_cn}</div>
+        <div className="text-xs text-gray-400 truncate">{slot.label_en}</div>
+        {slot.status === 'uploaded' && slot.file_name && (
+          <div className="flex items-center gap-1 mt-1">
+            <FileText className="w-3 h-3 text-blue-500" />
+            <span className="text-xs text-blue-600 truncate">{slot.file_name}</span>
           </div>
         )}
+        {slot.status === 'rejected' && slot.reject_reason && (
+          <div className="text-xs text-red-500 mt-1">拒绝原因: {slot.reject_reason}</div>
+        )}
+      </div>
 
-        {/* Content Area */}
-        {slot.status === 'empty' && !readOnly ? (
-          /* Empty - Upload Zone */
-          <label className="block cursor-pointer">
-            <div className={`border border-dashed rounded-lg p-3 text-center transition
-              ${dragOver ? 'border-blue-400 bg-blue-500/10' : 'border-slate-700 hover:border-slate-500'}
-              ${uploading ? 'opacity-50 pointer-events-none' : ''}`}
+      {/* 来源方 */}
+      <div className="text-xs text-gray-400 shrink-0 hidden sm:block w-16 text-center">
+        {slot.source_party}
+      </div>
+
+      {/* 状态 */}
+      <div className={`flex items-center gap-1 shrink-0 ${statusCfg.color}`}>
+        {StatusIcon && <StatusIcon className="w-4 h-4" />}
+        <span className="text-xs">{statusCfg.label}</span>
+      </div>
+
+      {/* 操作按钮 */}
+      <div className="shrink-0">
+        {uploading ? (
+          <Loader2 className="w-5 h-5 animate-spin text-blue-500" />
+        ) : slot.status === 'empty' || slot.status === 'rejected' ? (
+          <>
+            <input
+              type="file"
+              id={inputId}
+              className="hidden"
+              onChange={handleFileSelect}
+              accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx"
+            />
+            <label
+              htmlFor={inputId}
+              className="cursor-pointer inline-flex items-center gap-1 px-3 py-1.5 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
             >
-              {uploading ? (
-                <div className="w-5 h-5 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin mx-auto" />
-              ) : (
-                <>
-                  <Upload className="w-5 h-5 text-slate-600 mx-auto mb-1" />
-                  <p className="text-[10px] text-slate-600">拖拽或点击上传</p>
-                  <p className="text-[9px] text-slate-700 mt-0.5">{slot.accept_formats}</p>
-                </>
-              )}
-            </div>
-            <input type="file" className="hidden" accept={slot.accept_formats} onChange={handleFileSelect} disabled={uploading} />
-          </label>
-        ) : slot.status !== 'empty' ? (
-          /* Has File */
-          <div className="bg-slate-950/40 rounded-lg p-2.5">
-            <div className="flex items-center gap-2">
-              <FileText className="w-4 h-4 text-slate-500 flex-shrink-0" />
-              <span className="text-xs text-slate-300 truncate flex-1">{slot.file_name || '已上传'}</span>
-              <div className="flex items-center gap-1">
-                {slot.file_url && (
-                  <button className="p-1 hover:bg-white/5 rounded transition" title="查看">
-                    <Eye className="w-3.5 h-3.5 text-slate-500 hover:text-white" />
-                  </button>
-                )}
-                {!readOnly && (
-                  <button onClick={() => onRemove(slot.evidence_code)} className="p-1 hover:bg-red-500/10 rounded transition" title="移除">
-                    <Trash2 className="w-3.5 h-3.5 text-slate-600 hover:text-red-400" />
-                  </button>
-                )}
-              </div>
-            </div>
-            {slot.status === 'rejected' && slot.reject_reason && (
-              <div className="mt-2 p-1.5 bg-red-500/10 rounded text-[9px] text-red-400">
-                退回原因: {slot.reject_reason}
-              </div>
-            )}
-          </div>
-        ) : (
-          /* Read-only empty */
-          <div className="border border-dashed border-slate-800 rounded-lg p-3 text-center">
-            <p className="text-[10px] text-slate-700">未上传</p>
-          </div>
-        )}
+              <Upload className="w-3.5 h-3.5" />
+              上传
+            </label>
+          </>
+        ) : slot.status === 'uploaded' && slot.file_url ? (
+          <a
+            href={slot.file_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 px-3 py-1.5 text-xs text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100"
+          >
+            <Eye className="w-3.5 h-3.5" />
+            查看
+          </a>
+        ) : slot.status === 'verified' ? (
+          <span className="text-xs text-green-500">✓</span>
+        ) : null}
       </div>
     </div>
   );
