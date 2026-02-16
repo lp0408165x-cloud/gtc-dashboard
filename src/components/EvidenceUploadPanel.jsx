@@ -4,7 +4,7 @@ import {
   ChevronDown, ChevronRight, FileText, Trash2, Eye,
   Loader2, Shield, RefreshCw
 } from 'lucide-react';
-
+ import { filesAPI } from '../services/api';
 const API_URL = import.meta.env.VITE_API_URL;
 
 // 状态配置
@@ -110,14 +110,7 @@ export default function EvidenceUploadPanel({ caseId, caseType, onSlotsLoaded })
       const formData = new FormData();
       formData.append('file', file);
 
-      const uploadRes = await fetch(`${API_URL}/api/v1/files/upload/${caseId}`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` },
-        body: formData,
-      });
-
-      if (!uploadRes.ok) throw new Error('文件上传失败');
-      const uploadData = await uploadRes.json();
+      const uploadData = await filesAPI.upload(caseId, file);
 
       // 2. 更新槽位状态
       const patchRes = await fetch(`${API_URL}/api/v1/evidence/slots/${slotId}`, {
