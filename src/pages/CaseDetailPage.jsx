@@ -38,10 +38,10 @@ import {
 // 状态配置
 const STATUS_CONFIG = {
   pending:          { label: '待处理',     icon: Clock,         color: 'text-amber-600',   bg: 'bg-amber-100' },
-  ai_analyzing:     { label: 'AI分析中',   icon: Loader2,       color: 'text-blue-600',    bg: 'bg-blue-100' },
-  ai_completed:     { label: 'AI已完成',   icon: CheckCircle,   color: 'text-green-600',   bg: 'bg-green-100' },
-  needs_human:      { label: '需人工介入', icon: AlertTriangle, color: 'text-orange-600',  bg: 'bg-orange-100' },
-  human_processing: { label: '人工处理中', icon: UserCheck,     color: 'text-purple-600',  bg: 'bg-purple-100' },
+  ai_analyzing:     { label: '分析中',   icon: Loader2,       color: 'text-blue-600',    bg: 'bg-blue-100' },
+  ai_completed:     { label: '已完成',   icon: CheckCircle,   color: 'text-green-600',   bg: 'bg-green-100' },
+  needs_human:      { label: '需专家介入', icon: AlertTriangle, color: 'text-orange-600',  bg: 'bg-orange-100' },
+  human_processing: { label: '专家处理中', icon: UserCheck,     color: 'text-purple-600',  bg: 'bg-purple-100' },
   closed:           { label: '已结案',     icon: CheckCircle,   color: 'text-gray-600',    bg: 'bg-gray-100' },
   reviewing:        { label: '审核中',     icon: RefreshCw,     color: 'text-blue-600',    bg: 'bg-blue-100' },
   submitted:        { label: '已提交CBP',  icon: Upload,        color: 'text-purple-600',  bg: 'bg-purple-100' },
@@ -155,7 +155,7 @@ const CaseDetailPage = () => {
       setShowDeleteConfirm(false);
     }
   };
-  // === P0：人工介入操作 ===
+  // === P0：专家介入操作 ===
 
   const handleStatusChange = async (newStatus) => {
     setStatusChanging(true);
@@ -205,7 +205,7 @@ const CaseDetailPage = () => {
       setOverrideMode(false);
       setOverrideData({});
       setOverrideReason('');
-      alert('AI分析结果已覆盖');
+      alert('分析结果已覆盖');
     } catch (error) {
       alert(error.response?.data?.detail || '保存失败');
     } finally {
@@ -225,7 +225,7 @@ const CaseDetailPage = () => {
     setChatMessages([]);
   };
 
-  // === AI聊天操作 ===
+  // === 聊天操作 ===
 
   const handleSendMessage = async () => {
     if (!chatInput.trim()) return;
@@ -251,7 +251,7 @@ const CaseDetailPage = () => {
     } catch (error) {
       setChatMessages([
         ...newMessages,
-        { role: 'assistant', content: '⚠️ AI聊天失败，请稍后重试。' }
+        { role: 'assistant', content: '⚠️ 聊天失败，请稍后重试。' }
       ]);
     } finally {
       setChatLoading(false);
@@ -437,7 +437,7 @@ const CaseDetailPage = () => {
     return configs[level] || configs.UNKNOWN;
   };
 
-  // === 渲染：人工介入 Tab ===
+  // === 渲染：专家介入 Tab ===
   const renderHumanTab = () => {
     const currentStatus = caseData?.status || 'pending';
     const allowedTransitions = STATUS_TRANSITIONS[currentStatus] || [];
@@ -544,11 +544,11 @@ const CaseDetailPage = () => {
           </button>
         </div>
 
-        {/* 人工编辑AI结果 */}
+        {/* 人工编辑结果 */}
         <div className="bg-white border border-gray-200 rounded-xl p-5">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-semibold text-gtc-navy flex items-center gap-2">
-              <Edit3 className="w-5 h-5" /> 编辑 AI 分析结果
+              <Edit3 className="w-5 h-5" /> 编辑  分析结果
             </h3>
             {!overrideMode ? (
               <button
@@ -584,7 +584,7 @@ const CaseDetailPage = () => {
                 <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
                   <p className="text-amber-700 text-sm flex items-center gap-2">
                     <AlertTriangle className="w-4 h-4" />
-                    编辑模式：修改将覆盖AI生成的结果，原始数据会被保留在历史记录中。
+                    编辑模式：修改将覆盖生成的结果，原始数据会被保留在历史记录中。
                   </p>
                 </div>
 
@@ -609,7 +609,7 @@ const CaseDetailPage = () => {
                     type="text"
                     value={overrideReason}
                     onChange={(e) => setOverrideReason(e.target.value)}
-                    placeholder="请说明为什么要覆盖AI分析结果..."
+                    placeholder="请说明为什么要覆盖分析结果..."
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
                   />
                 </div>
@@ -645,7 +645,7 @@ const CaseDetailPage = () => {
                 </div>
               </div>
 
-              {/* 右侧：AI聊天窗口 */}
+              {/* 右侧：聊天窗口 */}
               <div className="flex flex-col h-[620px] border border-gray-300 rounded-lg">
                 <div className="bg-gradient-to-r from-blue-500 to-purple-500 text-white p-3 rounded-t-lg">
                   <h4 className="font-medium flex items-center gap-2">
@@ -660,7 +660,7 @@ const CaseDetailPage = () => {
                   {chatMessages.length === 0 && (
                     <div className="text-center text-gray-400 text-sm mt-8">
                       <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                      <p>向AI描述你想如何修改文案</p>
+                      <p>描述你想如何修改文案</p>
                       <p className="text-xs mt-2">例如："请帮我优化风险分析的语言，使其更专业"</p>
                     </div>
                   )}
@@ -1122,8 +1122,8 @@ const CaseDetailPage = () => {
               className={`py-4 border-b-2 font-medium whitespace-nowrap ${activeTab === tab ? 'border-gtc-gold text-gtc-navy' : 'border-transparent text-gray-500'}`}>
               {tab === 'info' && '案件信息'}
               {tab === 'files' && '文件管理'}
-              {tab === 'ai' && 'AI 分析'}
-              {tab === 'human' && '🧑‍💼 人工介入'}
+              {tab === 'ai' && '分析师合规'}
+              {tab === 'human' && '🧑‍💼 专家介入'}
             </button>
           ))}
         </div>
@@ -1232,7 +1232,7 @@ const CaseDetailPage = () => {
           {activeTab === 'ai' && (
             <div className="space-y-6">
               <div className="p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl border border-blue-100">
-                <h3 className="text-lg font-semibold text-gray-800 mb-3">Agent 智能分析</h3>
+                <h3 className="text-lg font-semibold text-gray-800 mb-3">Agent 分析师合规分析</h3>
                 <p className="text-sm text-gray-600 mb-4">自动执行完整分析流程：文档预处理 → 字段提取 → 一致性校验 → 风险扫描</p>
                 <AgentAnalyzeButton caseId={parseInt(id)} onComplete={() => fetchCaseData()} />
               </div>
@@ -1242,12 +1242,12 @@ const CaseDetailPage = () => {
                 <button onClick={handleAnalyze} disabled={analyzing}
                   className="bg-blue-500 text-white p-4 rounded-xl flex items-center justify-center gap-2 hover:bg-blue-600 disabled:opacity-50">
                   {analyzing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Brain className="w-5 h-5" />}
-                  {caseData?.risk_score ? '重新分析风险' : 'Gemini 风险分析'}
+                  {caseData?.risk_score ? '重新分析风险' : '分析师风险分析'}
                 </button>
                 <button onClick={handleGeneratePetition} disabled={generating}
                   className="bg-purple-500 text-white p-4 rounded-xl flex items-center justify-center gap-2 hover:bg-purple-600 disabled:opacity-50">
                   {generating ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
-                  {caseData?.petition_draft ? '重新生成申诉书' : 'Claude 生成申诉书'}
+                  {caseData?.petition_draft ? '重新生成申诉书' : '专业生成申诉书'}
                 </button>
                 <button onClick={handleRiskScan} disabled={scanning}
                   className="bg-red-500 text-white p-4 rounded-xl flex items-center justify-center gap-2 hover:bg-red-600 disabled:opacity-50">
