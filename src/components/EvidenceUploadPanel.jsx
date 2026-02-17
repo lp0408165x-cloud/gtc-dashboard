@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   Upload, CheckCircle, XCircle, AlertCircle, Clock,
   ChevronDown, ChevronRight, FileText, Trash2, Eye,
-  Loader2, Shield, RefreshCw, Brain, AlertTriangle
+  Loader2, Shield, RefreshCw, AlertTriangle
 } from 'lucide-react';
 import { filesAPI } from '../services/api';
 const API_URL = import.meta.env.VITE_API_URL;
@@ -23,45 +23,45 @@ const REQ_CONFIG = {
   C: { label: '条件', color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-200' },
 };
 
-// AI 校验状态配置
-const AI_STATUS_CONFIG = {
+// 校验状态配置（面向客户 — 不出现 AI 字样）
+const VALIDATION_STATUS_CONFIG = {
   matched: {
-    label: 'AI 已确认',
+    label: '专家已校验',
     color: 'text-green-700',
     bg: 'bg-green-50',
     border: 'border-green-200',
     icon: CheckCircle,
   },
   mismatched: {
-    label: 'AI 内容不匹配',
+    label: '文件内容不匹配',
     color: 'text-red-700',
     bg: 'bg-red-50',
     border: 'border-red-200',
     icon: XCircle,
   },
   blank: {
-    label: 'AI 检测为空白',
+    label: '文件为空白',
     color: 'text-amber-700',
     bg: 'bg-amber-50',
     border: 'border-amber-200',
     icon: AlertTriangle,
   },
   unreadable: {
-    label: 'AI 无法识别',
+    label: '无法识别内容',
     color: 'text-amber-700',
     bg: 'bg-amber-50',
     border: 'border-amber-200',
     icon: AlertCircle,
   },
   error: {
-    label: 'AI 校验失败',
+    label: '校验暂不可用',
     color: 'text-gray-500',
     bg: 'bg-gray-50',
     border: 'border-gray-200',
     icon: AlertCircle,
   },
   skipped: {
-    label: 'AI 已跳过',
+    label: '已跳过',
     color: 'text-gray-400',
     bg: 'bg-gray-50',
     border: 'border-gray-200',
@@ -73,7 +73,6 @@ const AI_STATUS_CONFIG = {
 function getFileViewUrl(fileUrl) {
   if (!fileUrl) return '#';
   if (fileUrl.startsWith('http')) return fileUrl;
-  // 相对路径 → Supabase public URL
   const base = SUPABASE_URL || '';
   return `${base}/storage/v1/object/public/case-files/${fileUrl}`;
 }
@@ -87,7 +86,7 @@ export default function EvidenceUploadPanel({ caseId, caseType, onSlotsLoaded })
   const [expandedGroups, setExpandedGroups] = useState({});
   const [uploadingSlot, setUploadingSlot] = useState(null);
   const [initializing, setInitializing] = useState(false);
-  const [aiAlert, setAiAlert] = useState(null); // AI 校验弹窗提示
+  const [validationAlert, setValidationAlert] = useState(null);
 
   const token = localStorage.getItem('gtc_token');
   const headers = { 'Authorization': `Bearer ${token}` };
@@ -157,15 +156,15 @@ export default function EvidenceUploadPanel({ caseId, caseType, onSlotsLoaded })
     if (caseId) fetchSlots();
   }, [caseId, fetchSlots]);
 
-  // 文件上传处理（含 AI 校验）
+  // 文件上传处理（含自动校验）
   const handleFileUpload = async (slotId, evidenceCode, file) => {
     setUploadingSlot(slotId);
-    setAiAlert(null);
+    setValidationAlert(null);
     try {
-      // 1. 上传文件到已有的文件上传接口
+      // 1. 上传文件
       const uploadData = await filesAPI.upload(caseId, file);
 
-      // 2. 更新槽位状态（后端会自动触发 AI 校验）
+      // 2. 更新槽位状态（后端自动触发校验）
       const patchRes = await fetch(`${API_URL}/api/v1/evidence/slots/${slotId}`, {
         method: 'PATCH',
         headers: { ...headers, 'Content-Type': 'application/json' },
@@ -182,19 +181,18 @@ export default function EvidenceUploadPanel({ caseId, caseType, onSlotsLoaded })
 
       const patchData = await patchRes.json();
 
-      // 3. 检查 AI 校验结果
+      // 3. 检查校验结果
       if (patchData.ai_validation) {
-        const ai = patchData.ai_validation;
-        if (ai.should_reject) {
-          setAiAlert({
+        const v = patchData.ai_validation;
+        if (v.should_reject) {
+          setValidationAlert({
             slotId,
             evidenceCode,
-            status: ai.status,
-            suggestion_cn: ai.suggestion_cn,
-            suggestion_en: ai.suggestion_en,
-            detected_type: ai.detected_type,
-            detected_code: ai.detected_code,
-            confidence: ai.confidence,
+            status: v.status,
+            suggestion_cn: v.suggestion_cn,
+            suggestion_en: v.suggestion_en,
+            detected_type: v.detected_type,
+            detected_code: v.detected_code,
           });
         }
       }
@@ -248,26 +246,25 @@ export default function EvidenceUploadPanel({ caseId, caseType, onSlotsLoaded })
 
   return (
     <div className="space-y-4">
-      {/* AI 校验警告弹窗 */}
-      {aiAlert && (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-4 animate-in fade-in">
+      {/* 文件校验提醒 */}
+      {validationAlert && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4">
           <div className="flex items-start gap-3">
             <AlertTriangle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
             <div className="flex-1">
               <div className="font-semibold text-red-800 mb-1">
-                AI 内容校验警告 — 槽位 {aiAlert.evidenceCode}
+                文件校验提醒 — 槽位 {validationAlert.evidenceCode}
               </div>
-              <p className="text-sm text-red-700 mb-2">{aiAlert.suggestion_cn}</p>
-              <p className="text-xs text-red-500">{aiAlert.suggestion_en}</p>
-              {aiAlert.detected_type && (
+              <p className="text-sm text-red-700 mb-2">{validationAlert.suggestion_cn}</p>
+              <p className="text-xs text-red-500">{validationAlert.suggestion_en}</p>
+              {validationAlert.detected_type && (
                 <p className="text-xs text-red-500 mt-1">
-                  AI 检测类型: {aiAlert.detected_type} ({aiAlert.detected_code})
-                  {aiAlert.confidence && ` · 置信度 ${Math.round(aiAlert.confidence * 100)}%`}
+                  检测类型: {validationAlert.detected_type} ({validationAlert.detected_code})
                 </p>
               )}
               <div className="flex gap-2 mt-3">
                 <button
-                  onClick={() => setAiAlert(null)}
+                  onClick={() => setValidationAlert(null)}
                   className="px-3 py-1.5 text-xs bg-white border border-red-200 text-red-700 rounded-lg hover:bg-red-50"
                 >
                   知道了
@@ -331,7 +328,6 @@ export default function EvidenceUploadPanel({ caseId, caseType, onSlotsLoaded })
       {/* 分组列表 */}
       {groups.map(group => (
         <div key={group.group_code} className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-          {/* 组头 */}
           <button
             onClick={() => toggleGroup(group.group_code)}
             className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
@@ -367,7 +363,6 @@ export default function EvidenceUploadPanel({ caseId, caseType, onSlotsLoaded })
             </div>
           </button>
 
-          {/* 组内槽位 */}
           {expandedGroups[group.group_code] && (
             <div className="border-t border-gray-100">
               {(groupedSlots[group.group_code] || []).map(slot => (
@@ -394,10 +389,10 @@ function SlotRow({ slot, uploading, onUpload }) {
   const reqCfg = REQ_CONFIG[slot.requirement] || REQ_CONFIG.O;
   const StatusIcon = statusCfg.icon;
 
-  // AI 校验状态
-  const aiStatus = slot.ai_validation_status;
-  const aiCfg = aiStatus ? AI_STATUS_CONFIG[aiStatus] : null;
-  const AiIcon = aiCfg?.icon;
+  // 校验状态
+  const vStatus = slot.ai_validation_status;
+  const vCfg = vStatus ? VALIDATION_STATUS_CONFIG[vStatus] : null;
+  const VIcon = vCfg?.icon;
 
   const validateFormat = (file) => {
     if (!slot.accepted_formats || slot.accepted_formats.length === 0) return true;
@@ -475,25 +470,22 @@ function SlotRow({ slot, uploading, onUpload }) {
           <div className="text-xs text-red-500 mt-1">拒绝原因: {slot.reject_reason}</div>
         )}
 
-        {/* AI 校验提示（mismatched / blank / unreadable） */}
-        {aiStatus && aiStatus !== 'matched' && aiStatus !== 'skipped' && slot.ai_suggestion && (
-          <div className={`flex items-start gap-1 mt-1.5 px-2 py-1 rounded text-xs ${aiCfg?.bg || 'bg-gray-50'} ${aiCfg?.color || 'text-gray-500'}`}>
-            {AiIcon && <AiIcon className="w-3 h-3 shrink-0 mt-0.5" />}
+        {/* 校验提示（mismatched / blank / unreadable） */}
+        {vStatus && vStatus !== 'matched' && vStatus !== 'skipped' && slot.ai_suggestion && (
+          <div className={`flex items-start gap-1 mt-1.5 px-2 py-1 rounded text-xs ${vCfg?.bg || 'bg-gray-50'} ${vCfg?.color || 'text-gray-500'}`}>
+            {VIcon && <VIcon className="w-3 h-3 shrink-0 mt-0.5" />}
             <span>{slot.ai_suggestion}</span>
           </div>
         )}
       </div>
 
-      {/* AI 校验徽章 */}
-      {aiStatus && aiCfg && (
-        <div className={`flex items-center gap-1 shrink-0 px-2 py-0.5 rounded-full text-xs border ${aiCfg.bg} ${aiCfg.color} ${aiCfg.border}`}
-          title={slot.ai_suggestion || aiCfg.label}
+      {/* 校验徽章 */}
+      {vStatus && vCfg && (
+        <div className={`flex items-center gap-1 shrink-0 px-2 py-0.5 rounded-full text-xs border ${vCfg.bg} ${vCfg.color} ${vCfg.border}`}
+          title={slot.ai_suggestion || vCfg.label}
         >
-          {AiIcon && <AiIcon className="w-3 h-3" />}
-          <span className="hidden sm:inline">{aiCfg.label}</span>
-          {slot.ai_confidence && (
-            <span className="text-xs opacity-70">{Math.round(slot.ai_confidence * 100)}%</span>
-          )}
+          {VIcon && <VIcon className="w-3 h-3" />}
+          <span className="hidden sm:inline">{vCfg.label}</span>
         </div>
       )}
 
