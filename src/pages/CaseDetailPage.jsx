@@ -1122,7 +1122,7 @@ const CaseDetailPage = () => {
               className={`py-4 border-b-2 font-medium whitespace-nowrap ${activeTab === tab ? 'border-gtc-gold text-gtc-navy' : 'border-transparent text-gray-500'}`}>
               {tab === 'info' && '案件信息'}
               {tab === 'files' && '文件管理'}
-              {tab === 'ai' && '分析师合规'}
+              {tab === 'ai' && '合规分析'}
               {tab === 'human' && '🧑‍💼 专家介入'}
             </button>
           ))}
