@@ -2,10 +2,11 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   Upload, CheckCircle, XCircle, AlertCircle, Clock,
   ChevronDown, ChevronRight, FileText, Trash2, Eye,
-  Loader2, Shield, RefreshCw
+  Loader2, Shield, RefreshCw, Brain, AlertTriangle
 } from 'lucide-react';
- import { filesAPI } from '../services/api';
+import { filesAPI } from '../services/api';
 const API_URL = import.meta.env.VITE_API_URL;
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 
 // 状态配置
 const STATUS_CONFIG = {
@@ -22,6 +23,61 @@ const REQ_CONFIG = {
   C: { label: '条件', color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-200' },
 };
 
+// AI 校验状态配置
+const AI_STATUS_CONFIG = {
+  matched: {
+    label: 'AI 已确认',
+    color: 'text-green-700',
+    bg: 'bg-green-50',
+    border: 'border-green-200',
+    icon: CheckCircle,
+  },
+  mismatched: {
+    label: 'AI 内容不匹配',
+    color: 'text-red-700',
+    bg: 'bg-red-50',
+    border: 'border-red-200',
+    icon: XCircle,
+  },
+  blank: {
+    label: 'AI 检测为空白',
+    color: 'text-amber-700',
+    bg: 'bg-amber-50',
+    border: 'border-amber-200',
+    icon: AlertTriangle,
+  },
+  unreadable: {
+    label: 'AI 无法识别',
+    color: 'text-amber-700',
+    bg: 'bg-amber-50',
+    border: 'border-amber-200',
+    icon: AlertCircle,
+  },
+  error: {
+    label: 'AI 校验失败',
+    color: 'text-gray-500',
+    bg: 'bg-gray-50',
+    border: 'border-gray-200',
+    icon: AlertCircle,
+  },
+  skipped: {
+    label: 'AI 已跳过',
+    color: 'text-gray-400',
+    bg: 'bg-gray-50',
+    border: 'border-gray-200',
+    icon: null,
+  },
+};
+
+// 构造 Supabase Storage 查看 URL
+function getFileViewUrl(fileUrl) {
+  if (!fileUrl) return '#';
+  if (fileUrl.startsWith('http')) return fileUrl;
+  // 相对路径 → Supabase public URL
+  const base = SUPABASE_URL || '';
+  return `${base}/storage/v1/object/public/case-files/${fileUrl}`;
+}
+
 export default function EvidenceUploadPanel({ caseId, caseType, onSlotsLoaded }) {
   const [slots, setSlots] = useState([]);
   const [groups, setGroups] = useState([]);
@@ -31,6 +87,7 @@ export default function EvidenceUploadPanel({ caseId, caseType, onSlotsLoaded })
   const [expandedGroups, setExpandedGroups] = useState({});
   const [uploadingSlot, setUploadingSlot] = useState(null);
   const [initializing, setInitializing] = useState(false);
+  const [aiAlert, setAiAlert] = useState(null); // AI 校验弹窗提示
 
   const token = localStorage.getItem('gtc_token');
   const headers = { 'Authorization': `Bearer ${token}` };
@@ -43,7 +100,6 @@ export default function EvidenceUploadPanel({ caseId, caseType, onSlotsLoaded })
       const res = await fetch(`${API_URL}/api/v1/evidence/cases/${caseId}/slots`, { headers });
 
       if (res.status === 404) {
-        // 槽位未初始化，自动初始化
         if (caseType) {
           await initSlots();
           return;
@@ -65,7 +121,6 @@ export default function EvidenceUploadPanel({ caseId, caseType, onSlotsLoaded })
         completion: data.completion_pct,
       });
 
-      // 默认展开有必需文件的组
       const expanded = {};
       (data.groups || []).forEach(g => {
         if (g.empty_required > 0) expanded[g.group_code] = true;
@@ -102,14 +157,15 @@ export default function EvidenceUploadPanel({ caseId, caseType, onSlotsLoaded })
     if (caseId) fetchSlots();
   }, [caseId, fetchSlots]);
 
-  // 文件上传处理
+  // 文件上传处理（含 AI 校验）
   const handleFileUpload = async (slotId, evidenceCode, file) => {
     setUploadingSlot(slotId);
+    setAiAlert(null);
     try {
       // 1. 上传文件到已有的文件上传接口
       const uploadData = await filesAPI.upload(caseId, file);
 
-      // 2. 更新槽位状态
+      // 2. 更新槽位状态（后端会自动触发 AI 校验）
       const patchRes = await fetch(`${API_URL}/api/v1/evidence/slots/${slotId}`, {
         method: 'PATCH',
         headers: { ...headers, 'Content-Type': 'application/json' },
@@ -123,6 +179,25 @@ export default function EvidenceUploadPanel({ caseId, caseType, onSlotsLoaded })
       });
 
       if (!patchRes.ok) throw new Error('更新槽位失败');
+
+      const patchData = await patchRes.json();
+
+      // 3. 检查 AI 校验结果
+      if (patchData.ai_validation) {
+        const ai = patchData.ai_validation;
+        if (ai.should_reject) {
+          setAiAlert({
+            slotId,
+            evidenceCode,
+            status: ai.status,
+            suggestion_cn: ai.suggestion_cn,
+            suggestion_en: ai.suggestion_en,
+            detected_type: ai.detected_type,
+            detected_code: ai.detected_code,
+            confidence: ai.confidence,
+          });
+        }
+      }
 
       await fetchSlots();
     } catch (err) {
@@ -173,6 +248,36 @@ export default function EvidenceUploadPanel({ caseId, caseType, onSlotsLoaded })
 
   return (
     <div className="space-y-4">
+      {/* AI 校验警告弹窗 */}
+      {aiAlert && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4 animate-in fade-in">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <div className="font-semibold text-red-800 mb-1">
+                AI 内容校验警告 — 槽位 {aiAlert.evidenceCode}
+              </div>
+              <p className="text-sm text-red-700 mb-2">{aiAlert.suggestion_cn}</p>
+              <p className="text-xs text-red-500">{aiAlert.suggestion_en}</p>
+              {aiAlert.detected_type && (
+                <p className="text-xs text-red-500 mt-1">
+                  AI 检测类型: {aiAlert.detected_type} ({aiAlert.detected_code})
+                  {aiAlert.confidence && ` · 置信度 ${Math.round(aiAlert.confidence * 100)}%`}
+                </p>
+              )}
+              <div className="flex gap-2 mt-3">
+                <button
+                  onClick={() => setAiAlert(null)}
+                  className="px-3 py-1.5 text-xs bg-white border border-red-200 text-red-700 rounded-lg hover:bg-red-50"
+                >
+                  知道了
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 统计摘要 */}
       {stats && (
         <div className="bg-white rounded-xl border border-gray-200 p-4">
@@ -253,7 +358,6 @@ export default function EvidenceUploadPanel({ caseId, caseType, onSlotsLoaded })
               <span className="text-sm text-gray-500">
                 {group.uploaded}/{group.total}
               </span>
-              {/* 组级迷你进度条 */}
               <div className="w-16 h-1.5 bg-gray-100 rounded-full overflow-hidden">
                 <div
                   className="h-full bg-blue-500 rounded-full"
@@ -290,7 +394,12 @@ function SlotRow({ slot, uploading, onUpload }) {
   const reqCfg = REQ_CONFIG[slot.requirement] || REQ_CONFIG.O;
   const StatusIcon = statusCfg.icon;
 
- const validateFormat = (file) => {
+  // AI 校验状态
+  const aiStatus = slot.ai_validation_status;
+  const aiCfg = aiStatus ? AI_STATUS_CONFIG[aiStatus] : null;
+  const AiIcon = aiCfg?.icon;
+
+  const validateFormat = (file) => {
     if (!slot.accepted_formats || slot.accepted_formats.length === 0) return true;
     const ext = file.name.split('.').pop().toUpperCase();
     const formatMap = {
@@ -331,6 +440,7 @@ function SlotRow({ slot, uploading, onUpload }) {
   };
 
   const inputId = `file-${slot.id}`;
+  const viewUrl = getFileViewUrl(slot.file_url);
 
   return (
     <div
@@ -364,7 +474,28 @@ function SlotRow({ slot, uploading, onUpload }) {
         {slot.status === 'rejected' && slot.reject_reason && (
           <div className="text-xs text-red-500 mt-1">拒绝原因: {slot.reject_reason}</div>
         )}
+
+        {/* AI 校验提示（mismatched / blank / unreadable） */}
+        {aiStatus && aiStatus !== 'matched' && aiStatus !== 'skipped' && slot.ai_suggestion && (
+          <div className={`flex items-start gap-1 mt-1.5 px-2 py-1 rounded text-xs ${aiCfg?.bg || 'bg-gray-50'} ${aiCfg?.color || 'text-gray-500'}`}>
+            {AiIcon && <AiIcon className="w-3 h-3 shrink-0 mt-0.5" />}
+            <span>{slot.ai_suggestion}</span>
+          </div>
+        )}
       </div>
+
+      {/* AI 校验徽章 */}
+      {aiStatus && aiCfg && (
+        <div className={`flex items-center gap-1 shrink-0 px-2 py-0.5 rounded-full text-xs border ${aiCfg.bg} ${aiCfg.color} ${aiCfg.border}`}
+          title={slot.ai_suggestion || aiCfg.label}
+        >
+          {AiIcon && <AiIcon className="w-3 h-3" />}
+          <span className="hidden sm:inline">{aiCfg.label}</span>
+          {slot.ai_confidence && (
+            <span className="text-xs opacity-70">{Math.round(slot.ai_confidence * 100)}%</span>
+          )}
+        </div>
+      )}
 
       {/* 来源方 */}
       <div className="text-xs text-gray-400 shrink-0 hidden sm:block w-16 text-center">
@@ -400,7 +531,7 @@ function SlotRow({ slot, uploading, onUpload }) {
           </>
         ) : slot.status === 'uploaded' && slot.file_url ? (
           <a
-            href={slot.file_url}
+            href={viewUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1 px-3 py-1.5 text-xs text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100"
