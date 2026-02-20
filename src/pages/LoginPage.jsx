@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Shield, Mail, Lock, ArrowRight, AlertCircle } from 'lucide-react';
+import { Shield, Mail, Lock, Phone, MessageCircle, ArrowRight, AlertCircle } from 'lucide-react';
 
 const LoginPage = () => {
   const [email, setEmail] = useState('');
@@ -31,12 +31,10 @@ const LoginPage = () => {
     <div className="min-h-screen bg-gtc-navy flex">
       {/* 左侧品牌区域 */}
       <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden">
-        {/* 背景装饰 */}
         <div className="absolute inset-0 bg-gradient-to-br from-gtc-navy via-gtc-blue to-gtc-navy"></div>
         <div className="absolute top-0 right-0 w-96 h-96 bg-gtc-gold/10 rounded-full blur-3xl"></div>
         <div className="absolute bottom-0 left-0 w-72 h-72 bg-gtc-accent/10 rounded-full blur-3xl"></div>
         
-        {/* 内容 */}
         <div className="relative z-10 flex flex-col justify-center px-16">
           <div className="flex items-center gap-3 mb-8">
             <Shield className="w-12 h-12 text-gtc-gold" />
@@ -67,13 +65,25 @@ const LoginPage = () => {
               <div className="text-sm text-gray-400">成功案例</div>
             </div>
           </div>
+
+          {/* 联系方式 */}
+          <div className="mt-10 pt-6 border-t border-white/10">
+            <p className="text-sm text-gray-400 mb-2">咨询热线</p>
+            <div className="flex items-center gap-3 text-white">
+              <Phone className="w-5 h-5 text-gtc-gold" />
+              <span className="text-lg font-medium">139-3850-8888</span>
+            </div>
+            <div className="flex items-center gap-3 text-gray-300 mt-2">
+              <MessageCircle className="w-5 h-5 text-gtc-gold" />
+              <span className="text-sm">微信同号</span>
+            </div>
+          </div>
         </div>
       </div>
 
       {/* 右侧登录表单 */}
       <div className="w-full lg:w-1/2 flex items-center justify-center p-8">
         <div className="w-full max-w-md">
-          {/* 移动端 Logo */}
           <div className="lg:hidden flex items-center gap-3 mb-8 justify-center">
             <Shield className="w-10 h-10 text-gtc-gold" />
             <span className="text-2xl font-display font-bold text-white">GTC-AI</span>
@@ -172,9 +182,13 @@ const LoginPage = () => {
             </div>
           </div>
 
-          <p className="text-center text-gray-400 text-sm mt-8">
-            © 2025 GTC-AI Global. All rights reserved.
-          </p>
+          {/* 移动端联系方式 + 版权 */}
+          <div className="mt-8 text-center space-y-2">
+            <p className="text-gray-400 text-sm lg:hidden">咨询热线：139-3850-8888（微信同号）</p>
+            <p className="text-gray-400 text-sm">
+              © 2025 GTC-AI Global. All rights reserved.
+            </p>
+          </div>
         </div>
       </div>
     </div>
