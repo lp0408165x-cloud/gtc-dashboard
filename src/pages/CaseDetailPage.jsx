@@ -1117,13 +1117,14 @@ const CaseDetailPage = () => {
 
       <div className="bg-white rounded-xl shadow-sm">
         <div className="border-b border-gray-200 flex gap-6 px-6 overflow-x-auto">
-          {['info', 'files', 'ai', 'human'].map((tab) => (
+          {['info', 'files', 'ai', 'human', 'workflow'].map((tab) => (
             <button key={tab} onClick={() => setActiveTab(tab)}
               className={`py-4 border-b-2 font-medium whitespace-nowrap ${activeTab === tab ? 'border-gtc-gold text-gtc-navy' : 'border-transparent text-gray-500'}`}>
               {tab === 'info' && '案件信息'}
               {tab === 'files' && '文件管理'}
               {tab === 'ai' && '合规分析'}
               {tab === 'human' && '🧑‍💼 专家介入'}
+              {tab === 'workflow' && '📋 工作流'}
             </button>
           ))}
         </div>
@@ -1285,8 +1286,13 @@ const CaseDetailPage = () => {
           )}
 
           {activeTab === 'human' && renderHumanTab()}
+          {activeTab === 'workflow' && (
+           <WorkflowPanel
+             caseId={parseInt(id)}
+             userRole={currentUser?.role?.name}
+           />
+         )}
         </div>
-      </div>
     {showDeleteConfirm && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl p-6 max-w-md w-full mx-4 shadow-xl">
