@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Shield, Mail, Lock, User, Building, ArrowRight, AlertCircle, CheckCircle } from 'lucide-react';
+import { Shield, Mail, Lock, User, Building, Phone, MessageCircle, ArrowRight, AlertCircle, CheckCircle } from 'lucide-react';
 
 const RegisterPage = () => {
   const [formData, setFormData] = useState({
@@ -10,6 +10,8 @@ const RegisterPage = () => {
     password: '',
     confirmPassword: '',
     company_name: '',
+    phone: '',
+    wechat_id: '',
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -39,6 +41,11 @@ const RegisterPage = () => {
       return;
     }
 
+    if (!formData.phone.trim()) {
+      setError('请填写手机号码');
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -47,6 +54,8 @@ const RegisterPage = () => {
         email: formData.email,
         password: formData.password,
         company_name: formData.company_name || undefined,
+        phone: formData.phone,
+        wechat_id: formData.wechat_id || undefined,
       });
       setSuccess(true);
       setTimeout(() => {
@@ -120,6 +129,19 @@ const RegisterPage = () => {
               <span>提供专业分析报告及申诉书</span>
             </div>
           </div>
+
+          {/* 联系方式 */}
+          <div className="mt-10 pt-6 border-t border-white/10">
+            <p className="text-sm text-gray-400 mb-2">咨询热线</p>
+            <div className="flex items-center gap-3 text-white">
+              <Phone className="w-5 h-5 text-gtc-gold" />
+              <span className="text-lg font-medium">139-3850-8888</span>
+            </div>
+            <div className="flex items-center gap-3 text-gray-300 mt-2">
+              <MessageCircle className="w-5 h-5 text-gtc-gold" />
+              <span className="text-sm">微信同号</span>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -185,18 +207,54 @@ const RegisterPage = () => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  公司名称
+                  手机号码 <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
-                  <Building className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                   <input
-                    type="text"
-                    name="company_name"
-                    value={formData.company_name}
+                    type="tel"
+                    name="phone"
+                    value={formData.phone}
                     onChange={handleChange}
                     className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gtc-gold focus:border-transparent transition-all"
-                    placeholder="您的公司名称（选填）"
+                    placeholder="您的手机号码"
+                    required
                   />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    公司名称
+                  </label>
+                  <div className="relative">
+                    <Building className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <input
+                      type="text"
+                      name="company_name"
+                      value={formData.company_name}
+                      onChange={handleChange}
+                      className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gtc-gold focus:border-transparent transition-all"
+                      placeholder="公司名称（选填）"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    微信号
+                  </label>
+                  <div className="relative">
+                    <MessageCircle className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <input
+                      type="text"
+                      name="wechat_id"
+                      value={formData.wechat_id}
+                      onChange={handleChange}
+                      className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gtc-gold focus:border-transparent transition-all"
+                      placeholder="微信号（选填）"
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -261,6 +319,11 @@ const RegisterPage = () => {
                 立即登录
               </Link>
             </div>
+          </div>
+
+          {/* 移动端联系方式 */}
+          <div className="lg:hidden mt-6 text-center">
+            <p className="text-gray-400 text-sm">咨询热线：139-3850-8888（微信同号）</p>
           </div>
         </div>
       </div>
