@@ -84,7 +84,7 @@ const PhaseCard = ({ phase, isActive, caseId, canEdit, onGateToggle }) => {
     setLoadingGates(true);
     try {
       const res = await workflowAPI.getGates(caseId, phase.phase_number);
-      setGates(res.data || []);
+      setGates(Array.isArray(res.data) ? res.data : res.data?.data || []);
     } catch { /* silent */ }
     finally { setLoadingGates(false); }
   }, [caseId, phase.phase_number, gates.length]);
