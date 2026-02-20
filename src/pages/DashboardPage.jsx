@@ -9,9 +9,11 @@ import {
   AlertTriangle,
   TrendingUp,
   FileText,
-  Brain,
+  Shield,
   ArrowRight,
   Sparkles,
+  Search,
+  FileCheck,
 } from 'lucide-react';
 
 const DashboardPage = () => {
@@ -29,10 +31,8 @@ const DashboardPage = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // 获取案件列表
         const cases = await casesAPI.list();
         
-        // 计算统计数据
         const total = cases.length;
         const pending = cases.filter(c => c.status === 'pending').length;
         const reviewing = cases.filter(c => c.status === 'reviewing').length;
@@ -41,7 +41,6 @@ const DashboardPage = () => {
         setStats({ total, pending, reviewing, approved });
         setRecentCases(cases.slice(0, 5));
 
-        // 获取 AI 状态
         const status = await aiAPI.status();
         setAiStatus(status);
       } catch (error) {
@@ -204,37 +203,37 @@ const DashboardPage = () => {
           )}
         </div>
 
-        {/* AI Status */}
+        {/* 系统服务状态 */}
         <div className="bg-white rounded-xl shadow-sm">
           <div className="p-6 border-b border-gray-100">
             <h2 className="text-lg font-display font-bold text-gtc-navy">
-              AI 引擎状态
+              系统服务状态
             </h2>
           </div>
           
           <div className="p-6 space-y-6">
-            {/* Gemini */}
+            {/* 文档分析服务 */}
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center">
-                <Brain className="w-6 h-6 text-blue-500" />
+                <Search className="w-6 h-6 text-blue-500" />
               </div>
               <div className="flex-1">
-                <p className="font-medium text-gtc-navy">Gemini 3.0</p>
-                <p className="text-sm text-gray-500">文档扫描引擎</p>
+                <p className="font-medium text-gtc-navy">文档分析服务</p>
+                <p className="text-sm text-gray-500">扫描与分类引擎</p>
               </div>
               <div className={`w-3 h-3 rounded-full ${
                 aiStatus?.gemini?.configured === true ? 'bg-green-500' : 'bg-gray-300'
               }`}></div>
             </div>
 
-            {/* Claude */}
+            {/* 合规推理服务 */}
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 bg-purple-50 rounded-xl flex items-center justify-center">
-                <Sparkles className="w-6 h-6 text-purple-500" />
+                <FileCheck className="w-6 h-6 text-purple-500" />
               </div>
               <div className="flex-1">
-                <p className="font-medium text-gtc-navy">Claude 4.5</p>
-                <p className="text-sm text-gray-500">法律推理引擎</p>
+                <p className="font-medium text-gtc-navy">合规推理服务</p>
+                <p className="text-sm text-gray-500">法律分析与文书引擎</p>
               </div>
               <div className={`w-3 h-3 rounded-full ${
                 aiStatus?.claude?.configured === true? 'bg-green-500' : 'bg-gray-300'
@@ -242,11 +241,11 @@ const DashboardPage = () => {
             </div>
 
             <div className="pt-4 border-t border-gray-100">
-              <p className="text-sm text-gray-500 mb-3">功能说明</p>
+              <p className="text-sm text-gray-500 mb-3">平台能力</p>
               <ul className="text-sm text-gray-600 space-y-2">
                 <li className="flex items-start gap-2">
                   <CheckCircle className="w-4 h-4 text-green-500 mt-0.5" />
-                  <span>大规模文档智能扫描与分析</span>
+                  <span>大规模文档扫描与分析</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <CheckCircle className="w-4 h-4 text-green-500 mt-0.5" />
@@ -254,7 +253,7 @@ const DashboardPage = () => {
                 </li>
                 <li className="flex items-start gap-2">
                   <CheckCircle className="w-4 h-4 text-green-500 mt-0.5" />
-                  <span>专业申诉书自动生成</span>
+                  <span>专业申诉书快速生成</span>
                 </li>
               </ul>
             </div>
