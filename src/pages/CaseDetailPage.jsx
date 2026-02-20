@@ -1290,7 +1290,7 @@ const CaseDetailPage = () => {
           {activeTab === 'workflow' && (
            <WorkflowPanel
              caseId={parseInt(id)}
-             userRole={currentUser?.role?.name}
+             userRole={user?.role?.name}
            />
          )}
         </div>
