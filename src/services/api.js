@@ -432,6 +432,15 @@ const trainingAPI = {
     }
   }
 };
+export const workflowAPI = {
+  initialize:   (caseId) =>         api.post(`/workflow/${caseId}/initialize`),
+  getSummary:   (caseId) =>         api.get(`/workflow/${caseId}/summary`),
+  getPhases:    (caseId) =>         api.get(`/workflow/${caseId}/phases`),
+  getGates:     (caseId, phase) =>  api.get(`/workflow/${caseId}/phases/${phase}/gates`),
+  updateGate:   (caseId, data) =>   api.patch(`/workflow/${caseId}/gates`, data),
+  advance:      (caseId) =>         api.post(`/workflow/${caseId}/advance`),
+  getReadiness: (caseId) =>         api.get(`/workflow/${caseId}/readiness`),
+};
 
 export default api;
-export { trainingAPI };
+export { trainingAPI, workflowAPI };
