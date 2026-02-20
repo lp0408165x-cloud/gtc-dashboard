@@ -45,11 +45,11 @@ const LoginPage = () => {
           
           <h1 className="text-5xl font-display font-bold text-white leading-tight mb-6">
             海关查扣<br />
-            <span className="text-gtc-gold">智能处理平台</span>
+            <span className="text-gtc-gold">专业处理平台</span>
           </h1>
           
           <p className="text-xl text-gray-300 mb-8 max-w-md">
-            双引擎AI架构，为您的供应链合规保驾护航。
+            资深专家合规团队，为您的供应链保驾护航。
             快速响应CBP查扣，专业申诉文书生成。
           </p>
           
@@ -173,7 +173,7 @@ const LoginPage = () => {
           </div>
 
           <p className="text-center text-gray-400 text-sm mt-8">
-            © 2024 GTC-AI. All rights reserved.
+            © 2025 GTC-AI Global. All rights reserved.
           </p>
         </div>
       </div>
