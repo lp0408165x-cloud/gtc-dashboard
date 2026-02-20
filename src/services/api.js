@@ -443,4 +443,4 @@ export const workflowAPI = {
 };
 
 export default api;
-export { trainingAPI, workflowAPI };
+export { trainingAPI };
