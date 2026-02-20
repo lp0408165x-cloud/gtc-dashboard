@@ -72,6 +72,10 @@ const PhaseCard = ({ phase, isActive, caseId, canEdit, onGateToggle }) => {
   const [expanded, setExpanded] = useState(isActive);
   const [gates, setGates]       = useState([]);
   const [loadingGates, setLoadingGates] = useState(false);
+  // 初始展开时自动加载门控
+  useEffect(() => {
+    if (isActive) loadGates();
+  }, []);
 
   const style = PHASE_STATUS_STYLE[phase.status] || PHASE_STATUS_STYLE.pending;
   const PhaseIcon = PHASE_ICONS[phase.phase_number] || ClipboardList;
