@@ -14,6 +14,8 @@ import {
   Sparkles,
   Search,
   FileCheck,
+  Phone,
+  MessageCircle,
 } from 'lucide-react';
 
 const DashboardPage = () => {
@@ -203,60 +205,89 @@ const DashboardPage = () => {
           )}
         </div>
 
-        {/* 系统服务状态 */}
-        <div className="bg-white rounded-xl shadow-sm">
-          <div className="p-6 border-b border-gray-100">
-            <h2 className="text-lg font-display font-bold text-gtc-navy">
-              系统服务状态
-            </h2>
+        {/* 右侧栏 */}
+        <div className="space-y-6">
+          {/* 系统服务状态 */}
+          <div className="bg-white rounded-xl shadow-sm">
+            <div className="p-6 border-b border-gray-100">
+              <h2 className="text-lg font-display font-bold text-gtc-navy">
+                系统服务状态
+              </h2>
+            </div>
+            
+            <div className="p-6 space-y-6">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center">
+                  <Search className="w-6 h-6 text-blue-500" />
+                </div>
+                <div className="flex-1">
+                  <p className="font-medium text-gtc-navy">文档分析服务</p>
+                  <p className="text-sm text-gray-500">扫描与分类引擎</p>
+                </div>
+                <div className={`w-3 h-3 rounded-full ${
+                  aiStatus?.gemini?.configured === true ? 'bg-green-500' : 'bg-gray-300'
+                }`}></div>
+              </div>
+
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-purple-50 rounded-xl flex items-center justify-center">
+                  <FileCheck className="w-6 h-6 text-purple-500" />
+                </div>
+                <div className="flex-1">
+                  <p className="font-medium text-gtc-navy">合规推理服务</p>
+                  <p className="text-sm text-gray-500">法律分析与文书引擎</p>
+                </div>
+                <div className={`w-3 h-3 rounded-full ${
+                  aiStatus?.claude?.configured === true? 'bg-green-500' : 'bg-gray-300'
+                }`}></div>
+              </div>
+
+              <div className="pt-4 border-t border-gray-100">
+                <p className="text-sm text-gray-500 mb-3">平台能力</p>
+                <ul className="text-sm text-gray-600 space-y-2">
+                  <li className="flex items-start gap-2">
+                    <CheckCircle className="w-4 h-4 text-green-500 mt-0.5" />
+                    <span>大规模文档扫描与分析</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <CheckCircle className="w-4 h-4 text-green-500 mt-0.5" />
+                    <span>五级供应链溯源图谱构建</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <CheckCircle className="w-4 h-4 text-green-500 mt-0.5" />
+                    <span>专业申诉书快速生成</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
           </div>
-          
-          <div className="p-6 space-y-6">
-            {/* 文档分析服务 */}
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center">
-                <Search className="w-6 h-6 text-blue-500" />
-              </div>
-              <div className="flex-1">
-                <p className="font-medium text-gtc-navy">文档分析服务</p>
-                <p className="text-sm text-gray-500">扫描与分类引擎</p>
-              </div>
-              <div className={`w-3 h-3 rounded-full ${
-                aiStatus?.gemini?.configured === true ? 'bg-green-500' : 'bg-gray-300'
-              }`}></div>
-            </div>
 
-            {/* 合规推理服务 */}
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-purple-50 rounded-xl flex items-center justify-center">
-                <FileCheck className="w-6 h-6 text-purple-500" />
+          {/* 联系我们 */}
+          <div className="bg-white rounded-xl shadow-sm p-6">
+            <h2 className="text-lg font-display font-bold text-gtc-navy mb-4">
+              联系专家团队
+            </h2>
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-gtc-gold/10 rounded-lg flex items-center justify-center">
+                  <Phone className="w-5 h-5 text-gtc-gold" />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">咨询热线</p>
+                  <p className="font-medium text-gtc-navy">139-3850-8888</p>
+                </div>
               </div>
-              <div className="flex-1">
-                <p className="font-medium text-gtc-navy">合规推理服务</p>
-                <p className="text-sm text-gray-500">法律分析与文书引擎</p>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-green-50 rounded-lg flex items-center justify-center">
+                  <MessageCircle className="w-5 h-5 text-green-500" />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">微信咨询</p>
+                  <p className="font-medium text-gtc-navy">139-3850-8888</p>
+                </div>
               </div>
-              <div className={`w-3 h-3 rounded-full ${
-                aiStatus?.claude?.configured === true? 'bg-green-500' : 'bg-gray-300'
-              }`}></div>
             </div>
-
-            <div className="pt-4 border-t border-gray-100">
-              <p className="text-sm text-gray-500 mb-3">平台能力</p>
-              <ul className="text-sm text-gray-600 space-y-2">
-                <li className="flex items-start gap-2">
-                  <CheckCircle className="w-4 h-4 text-green-500 mt-0.5" />
-                  <span>大规模文档扫描与分析</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <CheckCircle className="w-4 h-4 text-green-500 mt-0.5" />
-                  <span>五级供应链溯源图谱构建</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <CheckCircle className="w-4 h-4 text-green-500 mt-0.5" />
-                  <span>专业申诉书快速生成</span>
-                </li>
-              </ul>
-            </div>
+            <p className="text-xs text-gray-400 mt-4">工作时间：周一至周五 9:00-18:00</p>
           </div>
         </div>
       </div>
