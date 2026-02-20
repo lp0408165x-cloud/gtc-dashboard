@@ -29,7 +29,6 @@ const RegisterPage = () => {
     e.preventDefault();
     setError('');
 
-    // 验证密码
     if (formData.password !== formData.confirmPassword) {
       setError('两次输入的密码不一致');
       return;
@@ -100,17 +99,17 @@ const RegisterPage = () => {
           
           <p className="text-xl text-gray-300 mb-8 max-w-md">
             注册即可使用专业的海关查扣处理服务，
-            AI驱动的风险分析和申诉文书生成。
+            专业团队风险分析和申诉文书生成。
           </p>
 
           <div className="space-y-4">
             <div className="flex items-center gap-3 text-gray-300">
               <CheckCircle className="w-5 h-5 text-gtc-gold" />
-              <span>Gemini 3.0 文档智能扫描</span>
+              <span>快速文档扫描与分类</span>
             </div>
             <div className="flex items-center gap-3 text-gray-300">
               <CheckCircle className="w-5 h-5 text-gtc-gold" />
-              <span>Claude 4.5 法律推理引擎</span>
+              <span>法律推理与合规架构</span>
             </div>
             <div className="flex items-center gap-3 text-gray-300">
               <CheckCircle className="w-5 h-5 text-gtc-gold" />
@@ -118,7 +117,7 @@ const RegisterPage = () => {
             </div>
             <div className="flex items-center gap-3 text-gray-300">
               <CheckCircle className="w-5 h-5 text-gtc-gold" />
-              <span>专业申诉书自动生成</span>
+              <span>提供专业分析报告及申诉书</span>
             </div>
           </div>
         </div>
