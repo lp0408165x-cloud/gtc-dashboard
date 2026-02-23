@@ -227,9 +227,9 @@ const RegisterPage = () => {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    公司名称
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2"> 
+                     公司名称 <span className="text-red-500">*</span>
+                   </label>
                   <div className="relative">
                     <Building className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                     <input
@@ -238,23 +238,25 @@ const RegisterPage = () => {
                       value={formData.company_name}
                       onChange={handleChange}
                       className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gtc-gold focus:border-transparent transition-all"
-                      placeholder="公司名称（选填）"
+                      placeholder="公司全称"
+                      required
                     />
                   </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    微信号
+                    统一社会信用代码
                   </label>
                   <div className="relative">
-                    <MessageCircle className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <Building className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                     <input
                       type="text"
-                      name="wechat_id"
-                      value={formData.wechat_id}
+                      name="unified_social_credit_code"
+                      value={formData.unified_social_credit_code}
                       onChange={handleChange}
                       className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gtc-gold focus:border-transparent transition-all"
-                      placeholder="微信号（选填）"
+                      placeholder="18位信用代码（选填）"
+                      maxLength={18}
                     />
                   </div>
                 </div>
@@ -262,18 +264,17 @@ const RegisterPage = () => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  密码 <span className="text-red-500">*</span>
+                  微信号
                 </label>
                 <div className="relative">
-                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <MessageCircle className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                   <input
-                    type="password"
-                    name="password"
-                    value={formData.password}
+                    type="text"
+                    name="wechat_id"
+                    value={formData.wechat_id}
                     onChange={handleChange}
                     className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gtc-gold focus:border-transparent transition-all"
-                    placeholder="至少8位密码"
-                    required
+                    placeholder="微信号（选填）"
                   />
                 </div>
               </div>
