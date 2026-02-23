@@ -10,6 +10,7 @@ const RegisterPage = () => {
     password: '',
     confirmPassword: '',
     company_name: '',
+    unified_social_credit_code: '',
     phone: '',
     wechat_id: '',
   });
@@ -54,6 +55,7 @@ const RegisterPage = () => {
         email: formData.email,
         password: formData.password,
         company_name: formData.company_name || undefined,
+        unified_social_credit_code: formData.unified_social_credit_code || undefined,
         phone: formData.phone,
         wechat_id: formData.wechat_id || undefined,
       });
