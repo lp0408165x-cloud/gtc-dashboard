@@ -1,49 +1,44 @@
 import { useState, useEffect } from 'react';
-import { useAuth } from '../context/AuthContext';
 import {
   FileText, Download, Lock, Search, Filter,
   BookOpen, FileSpreadsheet, Globe, Star,
   ChevronRight, AlertCircle, CheckCircle, Loader2,
   Tag, Calendar, Eye
 } from 'lucide-react';
+import { resourcesAPI, subscriptionAPI } from '../services/api';
+import api from '../services/api';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'https://gtc-ai-platform.onrender.com';
-
-// 资料类型图标映射
 const TYPE_ICON = {
-  'guide':     <BookOpen className="w-5 h-5" />,
-  'template':  <FileText className="w-5 h-5" />,
-  'report':    <FileSpreadsheet className="w-5 h-5" />,
-  'checklist': <CheckCircle className="w-5 h-5" />,
-  'default':   <Globe className="w-5 h-5" />,
+  guide:     <BookOpen className="w-5 h-5" />,
+  template:  <FileText className="w-5 h-5" />,
+  report:    <FileSpreadsheet className="w-5 h-5" />,
+  checklist: <CheckCircle className="w-5 h-5" />,
+  default:   <Globe className="w-5 h-5" />,
 };
 
 const TYPE_LABEL = {
-  'guide':     '操作指南',
-  'template':  '文件模板',
-  'report':    '分析报告',
-  'checklist': '检查清单',
+  guide:     '操作指南',
+  template:  '文件模板',
+  report:    '分析报告',
+  checklist: '检查清单',
 };
 
 const PLAN_BADGE = {
-  'basic':      { label: '基础版', color: 'bg-gray-100 text-gray-600' },
-  'pro':        { label: '专业版', color: 'bg-blue-100 text-blue-700' },
-  'enterprise': { label: '企业版', color: 'bg-gtc-gold/20 text-gtc-navy' },
+  basic:      { label: '基础版', color: 'bg-gray-100 text-gray-600' },
+  pro:        { label: '专业版', color: 'bg-blue-100 text-blue-700' },
+  enterprise: { label: '企业版', color: 'bg-yellow-100 text-yellow-700' },
 };
 
 export default function ResourcesPage() {
-  const { token } = useAuth();
-
   const [resources, setResources]       = useState([]);
   const [loading, setLoading]           = useState(true);
   const [error, setError]               = useState(null);
   const [search, setSearch]             = useState('');
   const [filterType, setFilterType]     = useState('all');
-  const [downloading, setDownloading]   = useState(null); // resource_id being downloaded
-  const [toast, setToast]               = useState(null); // { type, msg }
+  const [downloading, setDownloading]   = useState(null);
+  const [toast, setToast]               = useState(null);
   const [subscription, setSubscription] = useState(null);
 
-  // ── 加载资料列表 ──────────────────────────────────────────────
   useEffect(() => {
     fetchResources();
     fetchSubscription();
@@ -52,14 +47,11 @@ export default function ResourcesPage() {
   const fetchResources = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`${API_BASE}/api/v1/resources/`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error('加载失败');
-      const data = await res.json();
+      setError(null);
+      const data = await resourcesAPI.list();
       setResources(data);
     } catch (e) {
-      setError(e.message);
+      setError(e.response?.data?.detail || '加载失败');
     } finally {
       setLoading(false);
     }
@@ -67,17 +59,12 @@ export default function ResourcesPage() {
 
   const fetchSubscription = async () => {
     try {
-      const res = await fetch(`${API_BASE}/api/v1/subscription/current`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setSubscription(data);
-      }
+      const data = await subscriptionAPI.getCurrent();
+      setSubscription(data);
     } catch (_) {}
   };
 
-  // ── 下载资料 ──────────────────────────────────────────────────
+  // 后端返回 JSON {download_url: ...}，不是 blob
   const handleDownload = async (resource) => {
     if (!resource.accessible) {
       showToast('error', '请升级套餐后下载此资料');
@@ -85,31 +72,22 @@ export default function ResourcesPage() {
     }
     try {
       setDownloading(resource.id);
-      const res = await fetch(`${API_BASE}/api/v1/resources/${resource.id}/download`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.detail || '下载失败');
-      }
-      const data = await res.json();
-      // 打开 signed URL
-      window.open(data.download_url, '_blank');
+      const response = await api.get(`/resources/${resource.id}/download`);
+      const { download_url } = response.data;
+      window.open(download_url, '_blank');
       showToast('success', `「${resource.title}」下载成功`);
     } catch (e) {
-      showToast('error', e.message);
+      showToast('error', e.response?.data?.detail || '下载失败');
     } finally {
       setDownloading(null);
     }
   };
 
-  // ── Toast ─────────────────────────────────────────────────────
   const showToast = (type, msg) => {
     setToast({ type, msg });
     setTimeout(() => setToast(null), 3000);
   };
 
-  // ── 过滤 ──────────────────────────────────────────────────────
   const filtered = resources.filter((r) => {
     const matchSearch =
       r.title?.toLowerCase().includes(search.toLowerCase()) ||
@@ -119,16 +97,12 @@ export default function ResourcesPage() {
   });
 
   const types = ['all', ...new Set(resources.map((r) => r.resource_type).filter(Boolean))];
-
-  // ── 统计 ──────────────────────────────────────────────────────
-  const totalCount      = resources.length;
   const accessibleCount = resources.filter((r) => r.accessible).length;
 
-  // ── 渲染 ──────────────────────────────────────────────────────
   return (
     <div className="space-y-6">
 
-      {/* ── 页头 ── */}
+      {/* 页头 */}
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gtc-navy">合规资料库</h1>
@@ -142,12 +116,14 @@ export default function ResourcesPage() {
             <span className="text-sm font-medium text-gtc-navy">
               {PLAN_BADGE[subscription.plan_id]?.label || subscription.plan_id}
             </span>
-            <span className="text-gray-400 text-xs">· 可访问 {accessibleCount}/{totalCount} 份资料</span>
+            <span className="text-gray-400 text-xs">
+              · 可访问 {accessibleCount}/{resources.length} 份资料
+            </span>
           </div>
         )}
       </div>
 
-      {/* ── 搜索 + 筛选 ── */}
+      {/* 搜索 + 筛选 */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -158,27 +134,25 @@ export default function ResourcesPage() {
             className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-gtc-gold focus:ring-1 focus:ring-gtc-gold transition-all"
           />
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Filter className="w-4 h-4 text-gray-400 flex-shrink-0" />
-          <div className="flex gap-2 flex-wrap">
-            {types.map((t) => (
-              <button
-                key={t}
-                onClick={() => setFilterType(t)}
-                className={`px-3 py-2 rounded-lg text-xs font-medium transition-all ${
-                  filterType === t
-                    ? 'bg-gtc-navy text-white'
-                    : 'bg-white border border-gray-200 text-gray-600 hover:border-gtc-gold'
-                }`}
-              >
-                {t === 'all' ? '全部' : (TYPE_LABEL[t] || t)}
-              </button>
-            ))}
-          </div>
+          {types.map((t) => (
+            <button
+              key={t}
+              onClick={() => setFilterType(t)}
+              className={`px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+                filterType === t
+                  ? 'bg-gtc-navy text-white'
+                  : 'bg-white border border-gray-200 text-gray-600 hover:border-gtc-gold'
+              }`}
+            >
+              {t === 'all' ? '全部' : (TYPE_LABEL[t] || t)}
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* ── 内容区 ── */}
+      {/* 内容区 */}
       {loading ? (
         <LoadingState />
       ) : error ? (
@@ -198,26 +172,21 @@ export default function ResourcesPage() {
         </div>
       )}
 
-      {/* ── 升级提示（有锁定资料时显示）── */}
+      {/* 升级横幅 */}
       {!loading && resources.some((r) => !r.accessible) && (
-        <UpgradeBanner
-          lockedCount={resources.filter((r) => !r.accessible).length}
-        />
+        <UpgradeBanner lockedCount={resources.filter((r) => !r.accessible).length} />
       )}
 
-      {/* ── Toast ── */}
+      {/* Toast */}
       {toast && (
-        <div
-          className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg text-sm font-medium transition-all ${
-            toast.type === 'success'
-              ? 'bg-green-50 text-green-700 border border-green-200'
-              : 'bg-red-50 text-red-700 border border-red-200'
-          }`}
-        >
+        <div className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg text-sm font-medium ${
+          toast.type === 'success'
+            ? 'bg-green-50 text-green-700 border border-green-200'
+            : 'bg-red-50 text-red-700 border border-red-200'
+        }`}>
           {toast.type === 'success'
             ? <CheckCircle className="w-4 h-4 flex-shrink-0" />
-            : <AlertCircle className="w-4 h-4 flex-shrink-0" />
-          }
+            : <AlertCircle className="w-4 h-4 flex-shrink-0" />}
           {toast.msg}
         </div>
       )}
@@ -225,28 +194,22 @@ export default function ResourcesPage() {
   );
 }
 
-// ── 资料卡片 ─────────────────────────────────────────────────────
 function ResourceCard({ resource: r, downloading, onDownload }) {
   const icon = TYPE_ICON[r.resource_type] || TYPE_ICON.default;
   const planBadge = PLAN_BADGE[r.required_plan] || PLAN_BADGE.basic;
   const isLocked = !r.accessible;
 
   return (
-    <div
-      className={`bg-white rounded-2xl border transition-all flex flex-col ${
-        isLocked
-          ? 'border-gray-200 opacity-75'
-          : 'border-gray-200 hover:border-gtc-gold hover:shadow-md'
-      }`}
-    >
-      {/* 卡片头 */}
+    <div className={`bg-white rounded-2xl border flex flex-col transition-all ${
+      isLocked
+        ? 'border-gray-200 opacity-75'
+        : 'border-gray-200 hover:border-gtc-gold hover:shadow-md'
+    }`}>
       <div className="p-5 flex-1">
         <div className="flex items-start justify-between mb-3">
-          <div
-            className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
-              isLocked ? 'bg-gray-100 text-gray-400' : 'bg-gtc-gold/10 text-gtc-gold'
-            }`}
-          >
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
+            isLocked ? 'bg-gray-100 text-gray-400' : 'bg-gtc-gold/10 text-gtc-gold'
+          }`}>
             {isLocked ? <Lock className="w-5 h-5" /> : icon}
           </div>
           <span className={`text-xs px-2 py-1 rounded-full font-medium ${planBadge.color}`}>
@@ -257,19 +220,14 @@ function ResourceCard({ resource: r, downloading, onDownload }) {
         <h3 className={`font-semibold text-sm leading-snug mb-1.5 ${isLocked ? 'text-gray-400' : 'text-gtc-navy'}`}>
           {r.title}
         </h3>
-
         {r.description && (
-          <p className="text-xs text-gray-500 leading-relaxed line-clamp-2">
-            {r.description}
-          </p>
+          <p className="text-xs text-gray-500 leading-relaxed line-clamp-2">{r.description}</p>
         )}
 
-        {/* 标签 */}
         <div className="flex flex-wrap gap-1.5 mt-3">
           {r.resource_type && (
             <span className="inline-flex items-center gap-1 text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">
-              <Tag className="w-3 h-3" />
-              {TYPE_LABEL[r.resource_type] || r.resource_type}
+              <Tag className="w-3 h-3" />{TYPE_LABEL[r.resource_type] || r.resource_type}
             </span>
           )}
           {r.created_at && (
@@ -280,14 +238,12 @@ function ResourceCard({ resource: r, downloading, onDownload }) {
           )}
           {r.download_count > 0 && (
             <span className="inline-flex items-center gap-1 text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">
-              <Eye className="w-3 h-3" />
-              {r.download_count} 次下载
+              <Eye className="w-3 h-3" />{r.download_count} 次下载
             </span>
           )}
         </div>
       </div>
 
-      {/* 卡片底部按钮 */}
       <div className="px-5 pb-5">
         <button
           onClick={() => onDownload(r)}
@@ -313,11 +269,10 @@ function ResourceCard({ resource: r, downloading, onDownload }) {
   );
 }
 
-// ── 加载状态 ─────────────────────────────────────────────────────
 function LoadingState() {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-      {[1, 2, 3, 4, 5, 6].map((i) => (
+      {[1,2,3,4,5,6].map((i) => (
         <div key={i} className="bg-white rounded-2xl border border-gray-200 p-5 animate-pulse">
           <div className="flex items-start justify-between mb-3">
             <div className="w-10 h-10 bg-gray-200 rounded-xl" />
@@ -333,7 +288,6 @@ function LoadingState() {
   );
 }
 
-// ── 错误状态 ─────────────────────────────────────────────────────
 function ErrorState({ msg, onRetry }) {
   return (
     <div className="flex flex-col items-center justify-center py-20 text-center">
@@ -349,7 +303,6 @@ function ErrorState({ msg, onRetry }) {
   );
 }
 
-// ── 空状态 ───────────────────────────────────────────────────────
 function EmptyState({ search }) {
   return (
     <div className="flex flex-col items-center justify-center py-20 text-center">
@@ -362,7 +315,6 @@ function EmptyState({ search }) {
   );
 }
 
-// ── 升级提示横幅 ─────────────────────────────────────────────────
 function UpgradeBanner({ lockedCount }) {
   return (
     <div className="flex items-center justify-between bg-gradient-to-r from-gtc-navy to-gtc-navy/90 text-white rounded-2xl px-6 py-4">
