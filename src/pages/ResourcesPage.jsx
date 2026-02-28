@@ -74,7 +74,12 @@ export default function ResourcesPage() {
     setDownloading(resource.id);
     const response = await api.get(`/resources/${resource.id}/download`);
     const { download_url } = response.data;
-    window.open(download_url, '_blank');
+    const fileResponse = await fetch(download_url);
+    const blob = await fileResponse.blob();
+    const correctBlob = new Blob([blob], { type: 'text/html; charset=utf-8' });
+    const url = window.URL.createObjectURL(correctBlob);
+    window.open(url, '_blank');
+    setTimeout(() => window.URL.revokeObjectURL(url), 30000);
     showToast('success', `「${resource.title}」已打开`);
   } catch (e) {
     showToast('error', '打开失败，请稍后重试');
