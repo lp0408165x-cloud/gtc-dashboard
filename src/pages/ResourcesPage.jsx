@@ -66,23 +66,28 @@ export default function ResourcesPage() {
 
   // 后端返回 JSON {download_url: ...}，不是 blob
   const handleDownload = async (resource) => {
-    if (!resource.accessible) {
-      showToast('error', '请升级套餐后下载此资料');
-      return;
-    }
-    try {
-      setDownloading(resource.id);
-      const response = await api.get(`/resources/${resource.id}/download`);
-      const { download_url } = response.data;
-      window.open(download_url, '_blank');
-      showToast('success', `「${resource.title}」下载成功`);
-    } catch (e) {
-      showToast('error', e.response?.data?.detail || '下载失败');
-    } finally {
-      setDownloading(null);
-    }
-  };
-
+  if (!resource.accessible) {
+    showToast('error', '请升级套餐后下载此资料');
+    return;
+  }
+  try {
+    setDownloading(resource.id);
+    const response = await api.get(`/resources/${resource.id}/download`, {
+      responseType: 'blob'
+    });
+    const blob = new Blob([response.data], {
+      type: response.headers['content-type'] || 'text/html'
+    });
+    const url = window.URL.createObjectURL(blob);
+    window.open(url, '_blank');
+    setTimeout(() => window.URL.revokeObjectURL(url), 30000);
+    showToast('success', `「${resource.title}」已打开`);
+  } catch (e) {
+    showToast('error', '打开失败，请稍后重试');
+  } finally {
+    setDownloading(null);
+  }
+};
   const showToast = (type, msg) => {
     setToast({ type, msg });
     setTimeout(() => setToast(null), 3000);
