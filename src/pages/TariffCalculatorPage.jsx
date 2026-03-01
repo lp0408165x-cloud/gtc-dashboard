@@ -66,7 +66,7 @@ export default function TariffCalculatorPage() {
       <div>
         <h1 className="text-2xl font-bold text-gtc-navy flex items-center gap-2">
           <Calculator className="w-7 h-7 text-gtc-gold" />
-          AI 关税计算器
+           关税计算器
         </h1>
         <p className="text-gray-500 mt-1 text-sm">
           输入产品描述，自动识别 HS Code 并计算对华关税（MFN + Section 301 + Section 122）
@@ -125,7 +125,7 @@ export default function TariffCalculatorPage() {
             className="w-full flex items-center justify-center gap-2 py-3 bg-gtc-navy text-white rounded-xl font-medium text-sm hover:bg-gtc-navy/90 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? (
-              <><Loader2 className="w-4 h-4 animate-spin" />AI 分析中，请稍候...</>
+              <><Loader2 className="w-4 h-4 animate-spin" />计算分析中，请稍候...</>
             ) : (
               <><Search className="w-4 h-4" />计算关税</>
             )}
