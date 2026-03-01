@@ -20,6 +20,7 @@ import LessonView from './pages/LessonView';
 import ExamPage from './pages/ExamPage';
 import CertificatesPage from './pages/CertificatesPage';
 import TrainingAdmin from './pages/TrainingAdmin';
+import TariffCalculatorPage from './pages/TariffCalculatorPage';  
 
 
 function App() {
@@ -50,7 +51,7 @@ function App() {
           <Route path="training/courses/:courseId/exam" element={<ExamPage />} />
           <Route path="training/certificates" element={<CertificatesPage />} />
           <Route path="training/admin" element={<TrainingAdmin />} />
-
+          <Route path="tariff-calculator" element={<TariffCalculatorPage />} />
         </Route>
 
         {/* 404 */}
