@@ -33,6 +33,7 @@ const Sidebar = () => {
     { path: '/cases', icon: FolderOpen, label: '案件管理' },
     { path: '/cases/new', icon: FilePlus, label: '新建案件' },
     { path: '/supply-chain-review', icon: Package, label: '供应链审查' },
+    { path: '/tariff-calculator', icon: Calculator, label: '关税计算器' },
     { path: '/analytics', icon: BarChart3, label: '数据分析' },
     { path: '/resources', icon: BookOpen, label: '资料库' },             // v8 新增
     { path: '/subscription', icon: CreditCard, label: '订阅管理' },      // v8 新增
