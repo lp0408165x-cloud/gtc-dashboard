@@ -17,6 +17,7 @@ import {
   GraduationCap,   // 培训中心图标
 } from 'lucide-react';
 import { useState } from 'react';
+import { Calculator } from 'lucide-react';  
 
 const Sidebar = () => {
   const [collapsed, setCollapsed] = useState(false);
