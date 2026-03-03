@@ -5,12 +5,9 @@ import {
   ArrowLeft,
   ArrowRight,
   FileText,
-  Package,
-  Building,
-  MapPin,
-  AlertCircle,
   CheckCircle,
-  Upload,
+  AlertCircle,
+  ClipboardList,
 } from 'lucide-react';
 
 const NewCasePage = () => {
@@ -19,43 +16,39 @@ const NewCasePage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
-  
+
   const [formData, setFormData] = useState({
     title: '',
-    cbp_case_number: '',
-    product_description: '',
-    hts_code: '',
-    country_of_origin: '',
-    manufacturer_name: '',
-    manufacturer_address: '',
-    importer_name: '',
     detention_reason: '',
-    detention_date: '',
-    port_of_entry: '',
-    estimated_value: '',
-    quantity: '',
+    cbp_case_number: '',
+    cbp_deadline: '',
     notes: '',
+    estimated_value: '',
   });
 
   const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
+    setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleNext = () => {
+    if (!formData.title.trim()) {
+      setError('请填写案件标题');
+      return;
+    }
+    setError('');
+    setStep(2);
+  };
+
+  const handleSubmit = async () => {
     setError('');
     setIsLoading(true);
-
     try {
       const caseData = {
         ...formData,
-        estimated_value: formData.estimated_value ? parseFloat(formData.estimated_value) : null,
-        quantity: formData.quantity ? parseInt(formData.quantity) : null,
+        estimated_value: formData.estimated_value
+          ? parseFloat(formData.estimated_value)
+          : null,
       };
-      
       const newCase = await casesAPI.create(caseData);
       setSuccess(true);
       setTimeout(() => {
@@ -63,31 +56,39 @@ const NewCasePage = () => {
       }, 1500);
     } catch (err) {
       setError(err.response?.data?.detail || '创建案件失败，请稍后重试');
+      setStep(1);
     } finally {
       setIsLoading(false);
     }
   };
 
+  const caseTypeLabel = {
+    'CF-28': 'CF-28 信息请求',
+    'CF-29': 'CF-29 行动通知',
+    UFLPA: 'UFLPA 强迫劳动扣押',
+    WRO: 'WRO 暂扣令',
+    'AD/CVD': '反倾销/反补贴',
+    'Section 301': '301条款',
+    Seizure: '扣押/没收',
+    Other: '其他',
+  };
+
   const steps = [
     { number: 1, title: '基本信息', icon: FileText },
-    { number: 2, title: '产品信息', icon: Package },
-    { number: 3, title: '供应商信息', icon: Building },
-    { number: 4, title: '查扣详情', icon: MapPin },
+    { number: 2, title: '确认提交', icon: ClipboardList },
   ];
 
   if (success) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
-        <div className="bg-white rounded-2xl shadow-lg p-8 max-w-md w-full text-center animate-fade-in">
+        <div className="bg-white rounded-2xl shadow-lg p-8 max-w-md w-full text-center">
           <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
             <CheckCircle className="w-8 h-8 text-green-600" />
           </div>
           <h2 className="text-2xl font-display font-bold text-gtc-navy mb-2">
             案件创建成功！
           </h2>
-          <p className="text-gray-500 mb-6">
-            正在跳转到案件详情页面...
-          </p>
+          <p className="text-gray-500 mb-6">正在跳转到案件详情页面...</p>
           <div className="w-8 h-8 border-2 border-gtc-gold/30 border-t-gtc-gold rounded-full animate-spin mx-auto"></div>
         </div>
       </div>
@@ -95,7 +96,7 @@ const NewCasePage = () => {
   }
 
   return (
-    <div className="max-w-4xl mx-auto animate-fade-in">
+    <div className="max-w-3xl mx-auto animate-fade-in">
       {/* Header */}
       <div className="mb-8">
         <button
@@ -105,10 +106,8 @@ const NewCasePage = () => {
           <ArrowLeft className="w-5 h-5" />
           返回
         </button>
-        <h1 className="text-2xl font-display font-bold text-gtc-navy">
-          新建案件
-        </h1>
-        <p className="text-gray-500">填写海关查扣案件信息</p>
+        <h1 className="text-2xl font-display font-bold text-gtc-navy">新建案件</h1>
+        <p className="text-gray-500">填写海关查扣案件基本信息</p>
       </div>
 
       {/* Progress Steps */}
@@ -134,7 +133,7 @@ const NewCasePage = () => {
               </div>
               {index < steps.length - 1 && (
                 <div
-                  className={`w-12 sm:w-24 h-1 mx-4 rounded ${
+                  className={`w-24 sm:w-48 h-1 mx-4 rounded ${
                     step > s.number ? 'bg-gtc-gold' : 'bg-gray-200'
                   }`}
                 ></div>
@@ -144,41 +143,61 @@ const NewCasePage = () => {
         </div>
       </div>
 
-      {/* Form */}
-      <form onSubmit={handleSubmit}>
-        <div className="bg-white rounded-xl shadow-sm p-8">
-          {error && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-3 text-red-700">
-              <AlertCircle className="w-5 h-5 flex-shrink-0" />
-              <span className="text-sm">{error}</span>
+      <div className="bg-white rounded-xl shadow-sm p-8">
+        {error && (
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-3 text-red-700">
+            <AlertCircle className="w-5 h-5 flex-shrink-0" />
+            <span className="text-sm">{error}</span>
+          </div>
+        )}
+
+        {/* Step 1: 基本信息 */}
+        {step === 1 && (
+          <div className="space-y-6">
+            <h2 className="text-lg font-display font-bold text-gtc-navy mb-6">
+              基本信息
+            </h2>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                案件标题 <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                name="title"
+                value={formData.title}
+                onChange={handleChange}
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gtc-gold focus:border-transparent transition-all"
+                placeholder="例如：XX公司太阳能电池板查扣案件"
+              />
             </div>
-          )}
 
-          {/* Step 1: 基本信息 */}
-          {step === 1 && (
-            <div className="space-y-6">
-              <h2 className="text-lg font-display font-bold text-gtc-navy mb-6">
-                基本信息
-              </h2>
-              
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                案件类型
+              </label>
+              <select
+                name="detention_reason"
+                value={formData.detention_reason}
+                onChange={handleChange}
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gtc-gold focus:border-transparent transition-all"
+              >
+                <option value="">请选择案件类型</option>
+                <option value="CF-28">CF-28 信息请求</option>
+                <option value="CF-29">CF-29 行动通知</option>
+                <option value="UFLPA">UFLPA 强迫劳动扣押</option>
+                <option value="WRO">WRO 暂扣令</option>
+                <option value="AD/CVD">反倾销/反补贴</option>
+                <option value="Section 301">301条款</option>
+                <option value="Seizure">扣押/没收</option>
+                <option value="Other">其他</option>
+              </select>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  案件标题 <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  name="title"
-                  value={formData.title}
-                  onChange={handleChange}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gtc-gold focus:border-transparent transition-all"
-                  placeholder="例如：XX公司太阳能电池板查扣案件"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  CBP 案件编号
+                  报关号 (Entry #)
                 </label>
                 <input
                   type="text"
@@ -186,264 +205,165 @@ const NewCasePage = () => {
                   value={formData.cbp_case_number}
                   onChange={handleChange}
                   className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gtc-gold focus:border-transparent transition-all"
-                  placeholder="例如：2024-1234-567890"
+                  placeholder="例如：XXX-XXXXXXX-X"
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  备注
-                </label>
-                <textarea
-                  name="notes"
-                  value={formData.notes}
-                  onChange={handleChange}
-                  rows={4}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gtc-gold focus:border-transparent transition-all resize-none"
-                  placeholder="其他需要说明的信息..."
-                />
-              </div>
-            </div>
-          )}
-
-          {/* Step 2: 产品信息 */}
-          {step === 2 && (
-            <div className="space-y-6">
-              <h2 className="text-lg font-display font-bold text-gtc-navy mb-6">
-                产品信息
-              </h2>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  产品描述 <span className="text-red-500">*</span>
-                </label>
-                <textarea
-                  name="product_description"
-                  value={formData.product_description}
-                  onChange={handleChange}
-                  rows={4}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gtc-gold focus:border-transparent transition-all resize-none"
-                  placeholder="详细描述被查扣的产品..."
-                  required
-                />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    HTS 编码
-                  </label>
-                  <input
-                    type="text"
-                    name="hts_code"
-                    value={formData.hts_code}
-                    onChange={handleChange}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gtc-gold focus:border-transparent transition-all"
-                    placeholder="例如：8541.40.6020"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    原产国
-                  </label>
-                  <input
-                    type="text"
-                    name="country_of_origin"
-                    value={formData.country_of_origin}
-                    onChange={handleChange}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gtc-gold focus:border-transparent transition-all"
-                    placeholder="例如：中国"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    数量
-                  </label>
-                  <input
-                    type="number"
-                    name="quantity"
-                    value={formData.quantity}
-                    onChange={handleChange}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gtc-gold focus:border-transparent transition-all"
-                    placeholder="货物数量"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    预估货值 (USD)
-                  </label>
-                  <input
-                    type="number"
-                    name="estimated_value"
-                    value={formData.estimated_value}
-                    onChange={handleChange}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gtc-gold focus:border-transparent transition-all"
-                    placeholder="例如：50000"
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Step 3: 供应商信息 */}
-          {step === 3 && (
-            <div className="space-y-6">
-              <h2 className="text-lg font-display font-bold text-gtc-navy mb-6">
-                供应商信息
-              </h2>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  制造商名称
+                  CBP 截止日期
                 </label>
                 <input
-                  type="text"
-                  name="manufacturer_name"
-                  value={formData.manufacturer_name}
+                  type="date"
+                  name="cbp_deadline"
+                  value={formData.cbp_deadline}
                   onChange={handleChange}
                   className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gtc-gold focus:border-transparent transition-all"
-                  placeholder="制造商公司名称"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  制造商地址
-                </label>
-                <textarea
-                  name="manufacturer_address"
-                  value={formData.manufacturer_address}
-                  onChange={handleChange}
-                  rows={3}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gtc-gold focus:border-transparent transition-all resize-none"
-                  placeholder="制造商详细地址"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  进口商名称
-                </label>
-                <input
-                  type="text"
-                  name="importer_name"
-                  value={formData.importer_name}
-                  onChange={handleChange}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gtc-gold focus:border-transparent transition-all"
-                  placeholder="美国进口商公司名称"
                 />
               </div>
             </div>
-          )}
 
-          {/* Step 4: 查扣详情 */}
-          {step === 4 && (
-            <div className="space-y-6">
-              <h2 className="text-lg font-display font-bold text-gtc-navy mb-6">
-                查扣详情
-              </h2>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  查扣原因
-                </label>
-                <select
-                  name="detention_reason"
-                  value={formData.detention_reason}
-                  onChange={handleChange}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gtc-gold focus:border-transparent transition-all"
-                >
-                  <option value="">请选择查扣原因</option>
-                  <option value="UFLPA">UFLPA 强迫劳动</option>
-                  <option value="WRO">WRO 暂扣令</option>
-                  <option value="AD/CVD">反倾销/反补贴</option>
-                  <option value="IPR">知识产权侵权</option>
-                  <option value="Section 301">301条款</option>
-                  <option value="Other">其他原因</option>
-                </select>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    查扣日期
-                  </label>
-                  <input
-                    type="date"
-                    name="detention_date"
-                    value={formData.detention_date}
-                    onChange={handleChange}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gtc-gold focus:border-transparent transition-all"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    入境口岸
-                  </label>
-                  <input
-                    type="text"
-                    name="port_of_entry"
-                    value={formData.port_of_entry}
-                    onChange={handleChange}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gtc-gold focus:border-transparent transition-all"
-                    placeholder="例如：Los Angeles, CA"
-                  />
-                </div>
-              </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                报关货值 (USD)
+              </label>
+              <input
+                type="number"
+                name="estimated_value"
+                value={formData.estimated_value}
+                onChange={handleChange}
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gtc-gold focus:border-transparent transition-all"
+                placeholder="例如：50000"
+              />
             </div>
-          )}
 
-          {/* Navigation Buttons */}
-          <div className="flex items-center justify-between mt-8 pt-6 border-t border-gray-100">
-            {step > 1 ? (
-              <button
-                type="button"
-                onClick={() => setStep(step - 1)}
-                className="flex items-center gap-2 px-6 py-3 text-gray-600 hover:text-gtc-navy transition-colors"
-              >
-                <ArrowLeft className="w-5 h-5" />
-                上一步
-              </button>
-            ) : (
-              <div></div>
-            )}
-
-            {step < 4 ? (
-              <button
-                type="button"
-                onClick={() => setStep(step + 1)}
-                className="flex items-center gap-2 bg-gtc-navy text-white px-6 py-3 rounded-xl font-medium hover:bg-gtc-blue transition-colors"
-              >
-                下一步
-                <ArrowRight className="w-5 h-5" />
-              </button>
-            ) : (
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="flex items-center gap-2 bg-gtc-gold text-gtc-navy px-8 py-3 rounded-xl font-medium hover:bg-amber-400 transition-colors disabled:opacity-50"
-              >
-                {isLoading ? (
-                  <div className="w-5 h-5 border-2 border-gtc-navy/30 border-t-gtc-navy rounded-full animate-spin"></div>
-                ) : (
-                  <>
-                    <CheckCircle className="w-5 h-5" />
-                    创建案件
-                  </>
-                )}
-              </button>
-            )}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                案情简介
+              </label>
+              <textarea
+                name="notes"
+                value={formData.notes}
+                onChange={handleChange}
+                rows={4}
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gtc-gold focus:border-transparent transition-all resize-none"
+                placeholder="简要描述案件背景、查扣情况及已知信息..."
+              />
+            </div>
           </div>
+        )}
+
+        {/* Step 2: 确认提交 */}
+        {step === 2 && (
+          <div className="space-y-6">
+            <h2 className="text-lg font-display font-bold text-gtc-navy mb-2">
+              确认案件信息
+            </h2>
+            <p className="text-sm text-gray-500 mb-6">
+              请确认以下信息无误后提交。产品、供应商等详细信息可在案件工作区继续补充。
+            </p>
+
+            <div className="bg-gray-50 rounded-xl p-6 space-y-4">
+              <Row label="案件标题" value={formData.title} required />
+              <Row
+                label="案件类型"
+                value={
+                  formData.detention_reason
+                    ? caseTypeLabel[formData.detention_reason]
+                    : '—'
+                }
+              />
+              <Row
+                label="报关号 (Entry #)"
+                value={formData.cbp_case_number || '—'}
+              />
+              <Row
+                label="CBP 截止日期"
+                value={formData.cbp_deadline || '—'}
+              />
+              <Row
+                label="报关货值"
+                value={
+                  formData.estimated_value
+                    ? `USD ${Number(formData.estimated_value).toLocaleString()}`
+                    : '—'
+                }
+              />
+              <Row
+                label="案情简介"
+                value={formData.notes || '—'}
+                multiline
+              />
+            </div>
+
+            <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 text-sm text-blue-700">
+              创建后可在案件工作区继续填写：产品信息、供应商信息、上传文件、AI 分析等。
+            </div>
+          </div>
+        )}
+
+        {/* Navigation */}
+        <div className="flex items-center justify-between mt-8 pt-6 border-t border-gray-100">
+          {step > 1 ? (
+            <button
+              type="button"
+              onClick={() => setStep(1)}
+              className="flex items-center gap-2 px-6 py-3 text-gray-600 hover:text-gtc-navy transition-colors"
+            >
+              <ArrowLeft className="w-5 h-5" />
+              返回修改
+            </button>
+          ) : (
+            <div></div>
+          )}
+
+          {step === 1 ? (
+            <button
+              type="button"
+              onClick={handleNext}
+              className="flex items-center gap-2 bg-gtc-navy text-white px-6 py-3 rounded-xl font-medium hover:bg-gtc-blue transition-colors"
+            >
+              下一步：确认信息
+              <ArrowRight className="w-5 h-5" />
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={handleSubmit}
+              disabled={isLoading}
+              className="flex items-center gap-2 bg-gtc-gold text-gtc-navy px-8 py-3 rounded-xl font-medium hover:bg-amber-400 transition-colors disabled:opacity-50"
+            >
+              {isLoading ? (
+                <div className="w-5 h-5 border-2 border-gtc-navy/30 border-t-gtc-navy rounded-full animate-spin"></div>
+              ) : (
+                <>
+                  <CheckCircle className="w-5 h-5" />
+                  确认创建
+                </>
+              )}
+            </button>
+          )}
         </div>
-      </form>
+      </div>
     </div>
   );
 };
+
+// 确认页小组件
+const Row = ({ label, value, required, multiline }) => (
+  <div className={`flex ${multiline ? 'flex-col gap-1' : 'items-start justify-between'}`}>
+    <span className="text-sm text-gray-500 min-w-[120px]">
+      {label}
+      {required && <span className="text-red-500 ml-1">*</span>}
+    </span>
+    <span
+      className={`text-sm font-medium text-gtc-navy ${
+        multiline ? 'whitespace-pre-wrap' : 'text-right max-w-xs'
+      }`}
+    >
+      {value}
+    </span>
+  </div>
+);
 
 export default NewCasePage;
