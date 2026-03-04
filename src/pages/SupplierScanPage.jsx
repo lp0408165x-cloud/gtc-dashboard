@@ -73,7 +73,7 @@ const SupplierScanPage = () => {
     setResults(null);
 
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('gtc_token');
       const res = await axios.post(
         `${API_BASE}/api/v1/tools/risk-scan`,
         { entity_names: names, match_threshold: 0.55, include_extracted: false },
@@ -226,7 +226,7 @@ const SupplierScanPage = () => {
                         )}
                       </div>
                       <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-md whitespace-nowrap">
-                        {m.entity_type}
+                        {typeof m.entity_type === 'string' ? m.entity_type : JSON.stringify(m.entity_type)}
                       </span>
                     </div>
 
