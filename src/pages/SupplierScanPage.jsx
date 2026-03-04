@@ -77,7 +77,7 @@ const SupplierScanPage = () => {
         { entity_names: names, match_threshold: 0.55, include_extracted: false },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      const data = res.data || {};
+      const data = res.data?.result || res.data || {};
       setResults({
         scanned_count: Number(data.scanned_count) || names.length,
         entity_list_count: Number(data.entity_list_count) || 70,
