@@ -53,6 +53,7 @@ function App() {
           <Route path="training/certificates" element={<CertificatesPage />} />
           <Route path="training/admin" element={<TrainingAdmin />} />
           <Route path="tariff-calculator" element={<TariffCalculatorPage />} />
+          <Route path="supplier-scan" element={<SupplierScanPage />} />
         </Route>
 
         {/* 404 */}
