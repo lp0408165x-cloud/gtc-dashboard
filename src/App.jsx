@@ -20,7 +20,8 @@ import LessonView from './pages/LessonView';
 import ExamPage from './pages/ExamPage';
 import CertificatesPage from './pages/CertificatesPage';
 import TrainingAdmin from './pages/TrainingAdmin';
-import TariffCalculatorPage from './pages/TariffCalculatorPage';  
+import TariffCalculatorPage from './pages/TariffCalculatorPage';
+import SupplierScanPage from './pages/SupplierScanPage';
 
 
 function App() {
