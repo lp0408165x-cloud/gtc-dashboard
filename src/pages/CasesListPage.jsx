@@ -50,9 +50,9 @@ const CasesListPage = () => {
   };
 
   const filteredCases = cases.filter((caseItem) => {
-    const matchesSearch =
-      caseItem.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      caseItem.cbp_case_number?.toLowerCase().includes(searchTerm.toLowerCase());
+   const matchesSearch =
+     (caseItem.title?.toLowerCase() ?? '').includes(searchTerm.toLowerCase()) ||
+     (caseItem.cbp_case_number?.toLowerCase() ?? '').includes(searchTerm.toLowerCase());
     const matchesFilter = filterStatus === 'all' || caseItem.status === filterStatus;
     return matchesSearch && matchesFilter;
   });
