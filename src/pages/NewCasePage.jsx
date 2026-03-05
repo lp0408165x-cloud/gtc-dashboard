@@ -24,6 +24,8 @@ const NewCasePage = () => {
     cbp_deadline: '',
     product_description: '',
     declared_value: '',
+    port_of_entry: '',
+    hts_code: '',
   });
 
   const handleChange = (e) => {
@@ -208,7 +210,6 @@ const NewCasePage = () => {
                   placeholder="例如：XXX-XXXXXXX-X"
                 />
               </div>
-
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   CBP 截止日期
@@ -223,17 +224,46 @@ const NewCasePage = () => {
               </div>
             </div>
 
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  报关货值 (USD)
+                </label>
+                <input
+                  type="number"
+                  name="declared_value"
+                  value={formData.declared_value}
+                  onChange={handleChange}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gtc-gold focus:border-transparent transition-all"
+                  placeholder="例如：50000"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  口岸 (Port of Entry)
+                </label>
+                <input
+                  type="text"
+                  name="port_of_entry"
+                  value={formData.port_of_entry}
+                  onChange={handleChange}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gtc-gold focus:border-transparent transition-all"
+                  placeholder="例如：Los Angeles, CA"
+                />
+              </div>
+            </div>
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                报关货值 (USD)
+                HTS编码
               </label>
               <input
-                type="number"
-                name="declared_value"
-                value={formData.declared_value}
+                type="text"
+                name="hts_code"
+                value={formData.hts_code}
                 onChange={handleChange}
                 className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gtc-gold focus:border-transparent transition-all"
-                placeholder="例如：50000"
+                placeholder="例如：8541.40.6020"
               />
             </div>
 
@@ -267,11 +297,7 @@ const NewCasePage = () => {
               <Row label="案件标题" value={formData.case_title} required />
               <Row
                 label="案件类型"
-                value={
-                  formData.case_type
-                    ? caseTypeLabel[formData.case_type]
-                    : '—'
-                }
+                value={formData.case_type ? caseTypeLabel[formData.case_type] : '—'}
               />
               <Row label="报关号 (Entry #)" value={formData.case_number || '—'} />
               <Row label="CBP 截止日期" value={formData.cbp_deadline || '—'} />
@@ -283,6 +309,8 @@ const NewCasePage = () => {
                     : '—'
                 }
               />
+              <Row label="口岸" value={formData.port_of_entry || '—'} />
+              <Row label="HTS编码" value={formData.hts_code || '—'} />
               <Row label="案情简介" value={formData.product_description || '—'} multiline />
             </div>
 
