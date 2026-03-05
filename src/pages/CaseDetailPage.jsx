@@ -1132,18 +1132,39 @@ const CaseDetailPage = () => {
 
         <div className="p-6">
           {activeTab === 'info' && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div className="bg-gray-50 rounded-xl p-4 space-y-3">
-                <h3 className="font-medium text-gtc-navy flex items-center gap-2"><Package className="w-4 h-4" /> 产品信息</h3>
-                <p className="text-sm"><span className="text-gray-400">HTS编码:</span> {caseData.hts_code || '-'}</p>
-                <p className="text-sm"><span className="text-gray-400">法律依据:</span> {caseData.law_basis || '-'}</p>
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {/* 基本信息 */}
+                <div className="bg-gray-50 rounded-xl p-4 space-y-3">
+                  <h3 className="font-medium text-gtc-navy flex items-center gap-2">
+                    <FileText className="w-4 h-4" /> 基本信息
+                  </h3>
+                  <p className="text-sm"><span className="text-gray-400">案件标题：</span> {caseData.title || '-'}</p>
+                  <p className="text-sm"><span className="text-gray-400">案件类型：</span> {caseData.case_type || '-'}</p>
+                  <p className="text-sm"><span className="text-gray-400">报关号 (Entry #)：</span> {caseData.seizure_number || '-'}</p>
+                  <p className="text-sm"><span className="text-gray-400">CBP截止日期：</span> {caseData.cbp_deadline ? new Date(caseData.cbp_deadline).toLocaleDateString('zh-CN') : '-'}</p>
+                  <p className="text-sm"><span className="text-gray-400">报关货值：</span> {caseData.declared_value ? `$${caseData.declared_value.toLocaleString()}` : '-'}</p>
+                  <p className="text-sm"><span className="text-gray-400">创建时间：</span> {new Date(caseData.created_at).toLocaleString('zh-CN')}</p>
+                </div>
+                {/* 查扣详情 */}
+                <div className="bg-gray-50 rounded-xl p-4 space-y-3">
+                  <h3 className="font-medium text-gtc-navy flex items-center gap-2">
+                    <MapPin className="w-4 h-4" /> 查扣详情
+                  </h3>
+                  <p className="text-sm"><span className="text-gray-400">口岸：</span> {caseData.port_of_entry || '-'}</p>
+                  <p className="text-sm"><span className="text-gray-400">HTS编码：</span> {caseData.hts_code || '-'}</p>
+                  <p className="text-sm"><span className="text-gray-400">法律依据：</span> {caseData.law_basis || '-'}</p>
+                </div>
               </div>
-              <div className="bg-gray-50 rounded-xl p-4 space-y-3">
-                <h3 className="font-medium text-gtc-navy flex items-center gap-2"><MapPin className="w-4 h-4" /> 查扣详情</h3>
-                <p className="text-sm"><span className="text-gray-400">查扣编号:</span> {caseData.seizure_number || '-'}</p>
-                <p className="text-sm"><span className="text-gray-400">口岸:</span> {caseData.port_of_entry || '-'}</p>
-                <p className="text-sm"><span className="text-gray-400">创建:</span> {new Date(caseData.created_at).toLocaleString('zh-CN')}</p>
-              </div>
+              {/* 案情简介 */}
+              {caseData.product_description && (
+                <div className="bg-gray-50 rounded-xl p-4">
+                  <h3 className="font-medium text-gtc-navy mb-2 flex items-center gap-2">
+                    <Package className="w-4 h-4" /> 案情简介
+                  </h3>
+                  <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">{caseData.product_description}</p>
+                </div>
+              )}
             </div>
           )}
 
