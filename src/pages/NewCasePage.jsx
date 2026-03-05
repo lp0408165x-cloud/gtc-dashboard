@@ -18,12 +18,12 @@ const NewCasePage = () => {
   const [success, setSuccess] = useState(false);
 
   const [formData, setFormData] = useState({
-    title: '',
-    detention_reason: '',
-    cbp_case_number: '',
+    case_title: '',
+    case_type: '',
+    case_number: '',
     cbp_deadline: '',
-    notes: '',
-    estimated_value: '',
+    product_description: '',
+    declared_value: '',
   });
 
   const handleChange = (e) => {
@@ -31,7 +31,7 @@ const NewCasePage = () => {
   };
 
   const handleNext = () => {
-    if (!formData.title.trim()) {
+    if (!formData.case_title.trim()) {
       setError('请填写案件标题');
       return;
     }
@@ -45,8 +45,8 @@ const NewCasePage = () => {
     try {
       const caseData = {
         ...formData,
-        estimated_value: formData.estimated_value
-          ? parseFloat(formData.estimated_value)
+        declared_value: formData.declared_value
+          ? parseFloat(formData.declared_value)
           : null,
       };
       const newCase = await casesAPI.create(caseData);
@@ -164,8 +164,8 @@ const NewCasePage = () => {
               </label>
               <input
                 type="text"
-                name="title"
-                value={formData.title}
+                name="case_title"
+                value={formData.case_title}
                 onChange={handleChange}
                 className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gtc-gold focus:border-transparent transition-all"
                 placeholder="例如：XX公司太阳能电池板查扣案件"
@@ -177,8 +177,8 @@ const NewCasePage = () => {
                 案件类型
               </label>
               <select
-                name="detention_reason"
-                value={formData.detention_reason}
+                name="case_type"
+                value={formData.case_type}
                 onChange={handleChange}
                 className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gtc-gold focus:border-transparent transition-all"
               >
@@ -201,8 +201,8 @@ const NewCasePage = () => {
                 </label>
                 <input
                   type="text"
-                  name="cbp_case_number"
-                  value={formData.cbp_case_number}
+                  name="case_number"
+                  value={formData.case_number}
                   onChange={handleChange}
                   className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gtc-gold focus:border-transparent transition-all"
                   placeholder="例如：XXX-XXXXXXX-X"
@@ -229,8 +229,8 @@ const NewCasePage = () => {
               </label>
               <input
                 type="number"
-                name="estimated_value"
-                value={formData.estimated_value}
+                name="declared_value"
+                value={formData.declared_value}
                 onChange={handleChange}
                 className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gtc-gold focus:border-transparent transition-all"
                 placeholder="例如：50000"
@@ -242,8 +242,8 @@ const NewCasePage = () => {
                 案情简介
               </label>
               <textarea
-                name="notes"
-                value={formData.notes}
+                name="product_description"
+                value={formData.product_description}
                 onChange={handleChange}
                 rows={4}
                 className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gtc-gold focus:border-transparent transition-all resize-none"
@@ -264,36 +264,26 @@ const NewCasePage = () => {
             </p>
 
             <div className="bg-gray-50 rounded-xl p-6 space-y-4">
-              <Row label="案件标题" value={formData.title} required />
+              <Row label="案件标题" value={formData.case_title} required />
               <Row
                 label="案件类型"
                 value={
-                  formData.detention_reason
-                    ? caseTypeLabel[formData.detention_reason]
+                  formData.case_type
+                    ? caseTypeLabel[formData.case_type]
                     : '—'
                 }
               />
-              <Row
-                label="报关号 (Entry #)"
-                value={formData.cbp_case_number || '—'}
-              />
-              <Row
-                label="CBP 截止日期"
-                value={formData.cbp_deadline || '—'}
-              />
+              <Row label="报关号 (Entry #)" value={formData.case_number || '—'} />
+              <Row label="CBP 截止日期" value={formData.cbp_deadline || '—'} />
               <Row
                 label="报关货值"
                 value={
-                  formData.estimated_value
-                    ? `USD ${Number(formData.estimated_value).toLocaleString()}`
+                  formData.declared_value
+                    ? `USD ${Number(formData.declared_value).toLocaleString()}`
                     : '—'
                 }
               />
-              <Row
-                label="案情简介"
-                value={formData.notes || '—'}
-                multiline
-              />
+              <Row label="案情简介" value={formData.product_description || '—'} multiline />
             </div>
 
             <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 text-sm text-blue-700">
