@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { casesAPI, aiAPI } from '../services/api';
+import { casesAPI, aiAPI } from '../services/api';
+import DeadlineAlerts from '../components/DeadlineAlerts';
 import {
   FolderOpen,
   Clock,
@@ -112,6 +114,7 @@ const DashboardPage = () => {
 
   return (
     <div className="space-y-8 animate-fade-in">
+      <DeadlineAlerts />
       {/* Welcome Section */}
       <div className="bg-gradient-to-r from-gtc-navy to-gtc-blue rounded-2xl p-8 text-white">
         <h1 className="text-3xl font-display font-bold mb-2">
