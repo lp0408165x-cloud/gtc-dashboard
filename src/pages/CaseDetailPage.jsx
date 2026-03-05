@@ -1098,7 +1098,7 @@ const CaseDetailPage = () => {
             <ArrowLeft className="w-5 h-5" /> 返回列表
           </button>
           <h1 className="text-2xl font-display font-bold text-gtc-navy">
-            {caseData.title || `案件 #${caseData.id}`}
+            {caseData.case_title || `案件 #${caseData.id}`}
           </h1>
         </div>
         <div className="flex items-center gap-3">
@@ -1139,7 +1139,7 @@ const CaseDetailPage = () => {
                   <h3 className="font-medium text-gtc-navy flex items-center gap-2">
                     <FileText className="w-4 h-4" /> 基本信息
                   </h3>
-                  <p className="text-sm"><span className="text-gray-400">案件标题：</span> {caseData.title || '-'}</p>
+                  <p className="text-sm"><span className="text-gray-400">案件标题：</span> {caseData.case_title || '-'}</p>
                   <p className="text-sm"><span className="text-gray-400">案件类型：</span> {caseData.case_type || '-'}</p>
                   <p className="text-sm"><span className="text-gray-400">报关号 (Entry #)：</span> {caseData.seizure_number || '-'}</p>
                   <p className="text-sm"><span className="text-gray-400">CBP截止日期：</span> {caseData.cbp_deadline ? new Date(caseData.cbp_deadline).toLocaleDateString('zh-CN') : '-'}</p>
@@ -1321,7 +1321,7 @@ const CaseDetailPage = () => {
           <div className="bg-white rounded-xl p-6 max-w-md w-full mx-4 shadow-xl">
             <h3 className="text-lg font-bold text-gray-900 mb-2">确认删除</h3>
             <p className="text-gray-600 mb-6">
-              确定要删除 <span className="font-medium text-red-600">{caseData.title || `案件 #${caseData.id}`}</span> 吗？此操作不可撤销，所有关联文件和分析结果将被永久删除。
+              确定要删除 <span className="font-medium text-red-600">{caseData.case_title || `案件 #${caseData.id}`}</span> 吗？此操作不可撤销，所有关联文件和分析结果将被永久删除。
             </p>
             <div className="flex justify-end gap-3">
               <button
