@@ -1141,7 +1141,7 @@ const CaseDetailPage = () => {
                   </h3>
                   <p className="text-sm"><span className="text-gray-400">案件标题：</span> {caseData.case_title || '-'}</p>
                   <p className="text-sm"><span className="text-gray-400">案件类型：</span> {caseData.case_type || '-'}</p>
-                  <p className="text-sm"><span className="text-gray-400">报关号 (Entry #)：</span> {caseData.seizure_number || '-'}</p>
+                  <p className="text-sm"><span className="text-gray-400">报关号 (Entry #)：</span> {caseData.case_number || caseData.seizure_number || '-'}</p>
                   <p className="text-sm"><span className="text-gray-400">CBP截止日期：</span> {caseData.cbp_deadline ? new Date(caseData.cbp_deadline).toLocaleDateString('zh-CN') : '-'}</p>
                   <p className="text-sm"><span className="text-gray-400">报关货值：</span> {caseData.declared_value ? `$${caseData.declared_value.toLocaleString()}` : '-'}</p>
                   <p className="text-sm"><span className="text-gray-400">创建时间：</span> {new Date(caseData.created_at).toLocaleString('zh-CN')}</p>
