@@ -84,6 +84,7 @@ const CaseDetailPage = () => {
   const [isDragging, setIsDragging] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [editingInfo, setEditingInfo] = useState(false);
 
   // P0 新增状态
   const [statusChanging, setStatusChanging] = useState(false);
