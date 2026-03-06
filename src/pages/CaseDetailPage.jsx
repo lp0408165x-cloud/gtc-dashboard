@@ -77,7 +77,8 @@ const CaseDetailPage = () => {
   const [generating, setGenerating] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [aiResult, setAiResult] = useState(null);
-  const [activeTab, setActiveTab] = useState('info');
+  const [searchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'info');
   const [processing, setProcessing] = useState(false);
   const [toolResult, setToolResult] = useState(null);
   const [scanResult, setScanResult] = useState(null);
