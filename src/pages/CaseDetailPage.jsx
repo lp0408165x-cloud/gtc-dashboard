@@ -5,6 +5,10 @@ import { useAuth } from '../context/AuthContext';
 import AgentAnalyzeButton from '../components/AgentAnalyzeButton';
 import EvidenceUploadPanel from '../components/EvidenceUploadPanel';
 import WorkflowPanel from '../components/WorkflowPanel';
+import WorkflowPanel from '../components/WorkflowPanel';
+import CaseInfoEditor from '../components/CaseInfoEditor';
+import SubmissionLog from '../components/SubmissionLog';
+
 import {
   ArrowLeft,
   FileText,
@@ -1118,7 +1122,7 @@ const CaseDetailPage = () => {
 
       <div className="bg-white rounded-xl shadow-sm">
         <div className="border-b border-gray-200 flex gap-6 px-6 overflow-x-auto">
-          {['info', 'files', 'ai', 'human', 'workflow'].map((tab) => (
+          {['info', 'files', 'ai', 'human', 'workflow', 'submission'].map((tab) => (
             <button key={tab} onClick={() => setActiveTab(tab)}
               className={`py-4 border-b-2 font-medium whitespace-nowrap ${activeTab === tab ? 'border-gtc-gold text-gtc-navy' : 'border-transparent text-gray-500'}`}>
               {tab === 'info' && '案件信息'}
@@ -1126,6 +1130,7 @@ const CaseDetailPage = () => {
               {tab === 'ai' && '合规分析'}
               {tab === 'human' && '🧑‍💼 专家介入'}
               {tab === 'workflow' && '📋 工作流'}
+              {tab === 'submission' && '📤 提交记录'}
             </button>
           ))}
         </div>
@@ -1314,6 +1319,9 @@ const CaseDetailPage = () => {
              userRole={user?.role?.name}
            />
          )}
+          {activeTab === 'submission' && (
+            <SubmissionLog caseId={id} />
+          )}
         </div>
      </div>
     {showDeleteConfirm && (
