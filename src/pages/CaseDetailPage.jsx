@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { casesAPI, filesAPI, aiAPI, toolsAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import AgentAnalyzeButton from '../components/AgentAnalyzeButton';
@@ -7,7 +7,7 @@ import EvidenceUploadPanel from '../components/EvidenceUploadPanel';
 import WorkflowPanel from '../components/WorkflowPanel';
 import CaseInfoEditor from '../components/CaseInfoEditor';
 import SubmissionLog from '../components/SubmissionLog';
-import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+
 
 import {
   ArrowLeft,
