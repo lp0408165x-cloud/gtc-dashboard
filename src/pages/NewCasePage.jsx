@@ -54,7 +54,7 @@ const NewCasePage = () => {
       const newCase = await casesAPI.create(caseData);
       setSuccess(true);
       setTimeout(() => {
-        navigate(`/cases/${newCase.id}`);
+        navigate(`/cases/${newCase.id}?tab=files`);
       }, 1500);
     } catch (err) {
       setError(err.response?.data?.detail || '创建案件失败，请稍后重试');
