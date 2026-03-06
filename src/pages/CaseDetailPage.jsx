@@ -1138,6 +1138,11 @@ const CaseDetailPage = () => {
         <div className="p-6">
           {activeTab === 'info' && (
             <div className="space-y-4">
+              <div className="flex justify-end">
+                <button onClick={() => setEditingInfo(true)} className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gtc-gold text-gtc-navy text-sm font-medium hover:bg-amber-400">
+                  <Edit3 className="w-4 h-4" /> 编辑案件信息
+                </button>
+              </div>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {/* 基本信息 */}
                 <div className="bg-gray-50 rounded-xl p-4 space-y-3">
