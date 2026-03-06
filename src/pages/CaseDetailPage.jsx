@@ -985,7 +985,7 @@ const CaseDetailPage = () => {
   };
 
   const renderSavedRiskAnalysis = () => {
-    if (!caseData?.risk_score && !caseData?.risk_analysis) return null;
+    if (!caseData?.risk_score && !caseData?.risk_analysis && !caseData?.ai_summary) return null;
     const riskScore = caseData.risk_score || 0;
     const riskColor = getRiskColor(riskScore);
     return (
@@ -1007,6 +1007,11 @@ const CaseDetailPage = () => {
             <p className="text-sm text-gray-700 leading-relaxed">{caseData.risk_analysis}</p>
           </div>
         )}
+         {caseData.ai_summary && !caseData.risk_analysis && (
+           <div className="bg-white rounded-xl p-4 border border-gray-200">
+             <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{caseData.ai_summary}</p>
+           </div>
+         )}
       </div>
     );
   };
