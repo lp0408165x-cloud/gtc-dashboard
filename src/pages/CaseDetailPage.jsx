@@ -1275,7 +1275,27 @@ const CaseDetailPage = () => {
               <div className="p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl border border-blue-100">
                 <h3 className="text-lg font-semibold text-gray-800 mb-3">Agent 分析师合规分析</h3>
                 <p className="text-sm text-gray-600 mb-4">自动执行完整分析流程：文档预处理 → 字段提取 → 一致性校验 → 风险扫描</p>
-                <AgentAnalyzeButton caseId={parseInt(id)} onComplete={() => fetchCaseData()} />
+                <AgentAnalyzeButton
+                  caseId={parseInt(id)}
+                  onComplete={async (data) => {
+                    if (data?.summary) {
+                      const s = data.summary;
+                      setCaseData(prev => ({
+                        ...prev,
+                        risk_score: s.consistency_score ?? prev?.risk_score,
+                        ai_summary: [
+                          '[Agent 智能分析]',
+                          `风险等级：${s.risk_level || 'UNKNOWN'}`,
+                          `文件处理：${s.processed_files}/${s.total_files} 个`,
+                          s.consistency_score != null ? `一致性评分：${s.consistency_score}/10` : '一致性评分：N/A',
+                          s.issues?.length ? '发现问题：' + s.issues.join('；') : '未发现明显风险问题',
+                        ].join('\n'),
+                      }));
+                    }
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    await fetchCaseData();
+                  }}
+                />
               </div>
               {renderSavedRiskAnalysis()}
               {renderSavedPetition()}
