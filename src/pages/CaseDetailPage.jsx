@@ -5,7 +5,6 @@ import { useAuth } from '../context/AuthContext';
 import AgentAnalyzeButton from '../components/AgentAnalyzeButton';
 import EvidenceUploadPanel from '../components/EvidenceUploadPanel';
 import WorkflowPanel from '../components/WorkflowPanel';
-import WorkflowPanel from '../components/WorkflowPanel';
 import CaseInfoEditor from '../components/CaseInfoEditor';
 import SubmissionLog from '../components/SubmissionLog';
 
