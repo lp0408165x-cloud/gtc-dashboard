@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { casesAPI, filesAPI, aiAPI, toolsAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import GenerateReportButton from '../components/GenerateReportButton';
 import AgentAnalyzeButton from '../components/AgentAnalyzeButton';
 import EvidenceUploadPanel from '../components/EvidenceUploadPanel';
 import WorkflowPanel from '../components/WorkflowPanel';
@@ -1134,7 +1135,7 @@ const CaseDetailPage = () => {
               className={`py-4 border-b-2 font-medium whitespace-nowrap ${activeTab === tab ? 'border-gtc-gold text-gtc-navy' : 'border-transparent text-gray-500'}`}>
               {tab === 'info' && '案件信息'}
               {tab === 'files' && '文件管理'}
-              {tab === 'ai' && '合规分析'}
+              {tab === 'ai' && '案件分析'}
               {tab === 'human' && '🧑‍💼 专家介入'}
               {tab === 'workflow' && '📋 工作流'}
               {tab === 'submission' && '📤 提交记录'}
@@ -1301,6 +1302,24 @@ const CaseDetailPage = () => {
                     await fetchCaseData();
                   }}
                 />
+              </div>
+              {/* CBP 合规报告生成 */}
+              <div className="p-4 bg-gradient-to-r from-[#1B3A6B]/5 to-[#C59736]/10 rounded-xl border border-[#1B3A6B]/20">
+                <div className="flex items-start justify-between mb-3">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-800">生成 CBP 合规回复报告</h3>
+                    <p className="text-sm text-gray-600 mt-1">
+                      Claude AI 读取案件信息 + 文件内容 → 识别 CBP 关注点 → 生成可提交的完整报告包
+                    </p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3 text-xs text-gray-500 mb-4">
+                  <div className="bg-white/60 rounded-lg p-2">📋 Cover Letter（执行摘要函）</div>
+                  <div className="bg-white/60 rounded-lg p-2">📝 Response Letter（逐问逐答回复）</div>
+                  <div className="bg-white/60 rounded-lg p-2">🔍 Gap Analysis（证据缺口分析）</div>
+                  <div className="bg-white/60 rounded-lg p-2">📁 Evidence Index（证据目录）</div>
+                </div>
+                <GenerateReportButton caseId={parseInt(id)} caseData={caseData} />
               </div>
               {renderSavedRiskAnalysis()}
               {renderSavedPetition()}
