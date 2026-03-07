@@ -1290,7 +1290,7 @@ const CaseDetailPage = () => {
                         ...prev,
                         risk_score: s.consistency_score ?? prev?.risk_score,
                         ai_summary: [
-                          '[Agent 智能分析]',
+                          '[文件校验分析]',
                           `风险等级：${s.risk_level || 'UNKNOWN'}`,
                           `文件处理：${s.processed_files}/${s.total_files} 个`,
                           s.consistency_score != null ? `一致性评分：${s.consistency_score}/10` : '一致性评分：N/A',
