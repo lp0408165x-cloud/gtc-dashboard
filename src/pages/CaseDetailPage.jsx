@@ -1309,7 +1309,7 @@ const CaseDetailPage = () => {
                   <div>
                     <h3 className="text-lg font-semibold text-gray-800">生成 CBP 合规回复报告</h3>
                     <p className="text-sm text-gray-600 mt-1">
-                      Claude AI 读取案件信息 + 文件内容 → 识别 CBP 关注点 → 生成可提交的完整报告包
+                       读取案件信息 + 文件内容 → 识别 CBP 关注点 → 生成可提交的完整报告包
                     </p>
                   </div>
                 </div>
