@@ -41,7 +41,7 @@ export default function AgentAnalyzeButton({ caseId, onComplete }) {
             : 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white'
         }`}
       >
-        {analyzing ? '分析中...' : '一键智能分析'}
+        {analyzing ? '分析中...' : '文件校验分析'}
       </button>
 
       {progress && (
