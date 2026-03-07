@@ -385,6 +385,7 @@ export default function EvidenceUploadPanel({ caseId, caseType, onSlotsLoaded })
 // 单个槽位行
 function SlotRow({ slot, uploading, onUpload }) {
   const [dragOver, setDragOver] = useState(false);
+  const [hideValidation, setHideValidation] = useState(false);  // ← 新增：控制校验提示显示
   const statusCfg = STATUS_CONFIG[slot.status] || STATUS_CONFIG.empty;
   const reqCfg = REQ_CONFIG[slot.requirement] || REQ_CONFIG.O;
   const StatusIcon = statusCfg.icon;
@@ -419,6 +420,7 @@ function SlotRow({ slot, uploading, onUpload }) {
       alert(`格式不符：${slot.label_cn} 仅接受 ${slot.accepted_formats.join(', ')} 格式`);
       return;
     }
+    setHideValidation(false);  // 重新上传时重置
     onUpload(file);
   };
 
@@ -430,6 +432,7 @@ function SlotRow({ slot, uploading, onUpload }) {
       e.target.value = '';
       return;
     }
+    setHideValidation(false);  // 重新上传时重置
     onUpload(file);
     e.target.value = '';
   };
@@ -470,18 +473,26 @@ function SlotRow({ slot, uploading, onUpload }) {
           <div className="text-xs text-red-500 mt-1">拒绝原因: {slot.reject_reason}</div>
         )}
 
-        {/* 校验提示（mismatched / blank / unreadable） */}
-        {vStatus && vStatus !== 'matched' && vStatus !== 'skipped' && slot.ai_suggestion && (
+        {/* 校验提示（mismatched / blank / unreadable）— 带关闭按钮 */}
+        {!hideValidation && vStatus && vStatus !== 'matched' && vStatus !== 'skipped' && slot.ai_suggestion && (
           <div className={`flex items-start gap-1 mt-1.5 px-2 py-1 rounded text-xs ${vCfg?.bg || 'bg-gray-50'} ${vCfg?.color || 'text-gray-500'}`}>
             {VIcon && <VIcon className="w-3 h-3 shrink-0 mt-0.5" />}
-            <span>{slot.ai_suggestion}</span>
+            <span className="flex-1">{slot.ai_suggestion}</span>
+            <button
+              onClick={() => setHideValidation(true)}
+              className="ml-1 shrink-0 opacity-60 hover:opacity-100"
+              title="关闭提示"
+            >
+              ✕
+            </button>
           </div>
         )}
       </div>
 
       {/* 校验徽章 */}
-      {vStatus && vCfg && (
-        <div className={`flex items-center gap-1 shrink-0 px-2 py-0.5 rounded-full text-xs border ${vCfg.bg} ${vCfg.color} ${vCfg.border}`}
+      {!hideValidation && vStatus && vCfg && (
+        <div
+          className={`flex items-center gap-1 shrink-0 px-2 py-0.5 rounded-full text-xs border ${vCfg.bg} ${vCfg.color} ${vCfg.border}`}
           title={slot.ai_suggestion || vCfg.label}
         >
           {VIcon && <VIcon className="w-3 h-3" />}
@@ -501,40 +512,56 @@ function SlotRow({ slot, uploading, onUpload }) {
       </div>
 
       {/* 操作按钮 */}
-      <div className="shrink-0">
+      <div className="shrink-0 flex items-center gap-1">
         {uploading ? (
           <Loader2 className="w-5 h-5 animate-spin text-blue-500" />
-        ) : slot.status === 'empty' || slot.status === 'rejected' ? (
+        ) : (
           <>
-            <input
-              type="file"
-              id={inputId}
-              className="hidden"
-              onChange={handleFileSelect}
-              accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx"
-            />
-            <label
-              htmlFor={inputId}
-              className="cursor-pointer inline-flex items-center gap-1 px-3 py-1.5 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              <Upload className="w-3.5 h-3.5" />
-              上传
-            </label>
+            {/* 上传 / 重新上传 input（所有非 verified / na 状态都显示） */}
+            {slot.status !== 'verified' && slot.status !== 'na' && (
+              <>
+                <input
+                  type="file"
+                  id={inputId}
+                  className="hidden"
+                  onChange={handleFileSelect}
+                  accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx"
+                />
+                <label
+                  htmlFor={inputId}
+                  className={`cursor-pointer inline-flex items-center gap-1 px-3 py-1.5 text-xs rounded-lg transition-colors ${
+                    slot.status === 'empty' || slot.status === 'rejected'
+                      ? 'bg-blue-600 text-white hover:bg-blue-700'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'  // 已上传 → 重新上传样式
+                  }`}
+                >
+                  <Upload className="w-3.5 h-3.5" />
+                  {slot.status === 'empty' || slot.status === 'rejected' ? '上传' : '重传'}
+                </label>
+              </>
+            )}
+
+            {/* 查看按钮（已上传且有 URL） */}
+            {slot.status === 'uploaded' && slot.file_url && (
+              <a
+                href={viewUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 px-3 py-1.5 text-xs text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100"
+              >
+                <Eye className="w-3.5 h-3.5" />
+                查看
+              </a>
+            )}
+
+            {/* 已验证 */}
+            {slot.status === 'verified' && (
+              <span className="text-xs text-green-500">✓</span>
+            )}
           </>
-        ) : slot.status === 'uploaded' && slot.file_url ? (
-          <a
-            href={viewUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 px-3 py-1.5 text-xs text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100"
-          >
-            <Eye className="w-3.5 h-3.5" />
-            查看
-          </a>
-        ) : slot.status === 'verified' ? (
-          <span className="text-xs text-green-500">✓</span>
-        ) : null}
+        )}
       </div>
     </div>
   );
 }
+
