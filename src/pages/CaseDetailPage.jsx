@@ -1196,6 +1196,7 @@ const CaseDetailPage = () => {
           {activeTab === 'files' && (
             <div className="space-y-4">
               {/* 证据槽位面板 */}
+              {(window.__DEBUG_CASE = caseData, null)}
               <EvidenceUploadPanel caseId={id} caseType={caseData?.case_type?.replace('-', ' ') || caseData?.case_type} visibleSlots={caseData?.visible_slots ?? []} />
               {/* 原有的拖拽上传区域保留在下面 */}
               <div
