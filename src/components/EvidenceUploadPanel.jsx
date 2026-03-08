@@ -42,7 +42,18 @@ function getFileViewUrl(fileUrl) {
 // visibleSlots: string[] — intake 分析后返回的可见槽位代码列表
 //               为空/undefined 时显示全部（兼容旧逻辑）
 // ─────────────────────────────────────────────
-export default function EvidenceUploadPanel({ caseId, caseType, visibleSlots, onSlotsLoaded }) {
+export default function EvidenceUploadPanel({ caseId, caseType, visibleSlots, intakeStatus, onSlotsLoaded }) {
+
+  // 未完成 intake 分析时显示提示
+  if (intakeStatus && intakeStatus !== 'complete') {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 text-center">
+        <Shield className="w-12 h-12 text-[#1B3A6B]/30 mb-4" />
+        <p className="text-gray-600 font-medium mb-1">请先完成初始文件分析</p>
+        <p className="text-gray-400 text-sm">上传报关文件、海关沟通记录和产品信息，AI 将自动生成专属证据清单</p>
+      </div>
+    );
+  }
   const [slots, setSlots]           = useState([]);
   const [groups, setGroups]         = useState([]);
   const [stats, setStats]           = useState(null);
