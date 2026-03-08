@@ -1196,7 +1196,9 @@ const CaseDetailPage = () => {
           {activeTab === 'files' && (
             <div className="space-y-4">
               {/* 证据槽位面板 */}
-              {caseData?.intake_status === 'complete' ? <EvidenceUploadPanel caseId={id} caseType={caseData?.case_type?.replace('-', ' ') || caseData?.case_type} visibleSlots={caseData?.visible_slots ?? []} /> : <IntakeUploadPanel caseId={id} onComplete={() => window.location.reload()} />}
+              <EvidenceUploadPanel caseId={id} caseType={caseData?.case_type?.replace('-', ' ') || caseData?.case_type} visibleSlots={caseData?.visible_slots ?? []} />
+              {/* 原有的拖拽上传区域保留在下面 */}
+              <div
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
                 onDrop={handleDrop}
@@ -1410,4 +1412,3 @@ const CaseDetailPage = () => {
 };
 
 export default CaseDetailPage;
-
