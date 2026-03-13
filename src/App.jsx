@@ -22,6 +22,9 @@ import CertificatesPage from './pages/CertificatesPage';
 import TrainingAdmin from './pages/TrainingAdmin';
 import TariffCalculatorPage from './pages/TariffCalculatorPage';
 import SupplierScanPage from './pages/SupplierScanPage';
+import SeizureCasesPage from './pages/SeizureCasesPage';
+import NewSeizureCasePage from './pages/NewSeizureCasePage';
+import SeizureCaseDetailPage from './pages/SeizureCaseDetailPage';
 
 
 function App() {
@@ -54,6 +57,9 @@ function App() {
           <Route path="training/admin" element={<TrainingAdmin />} />
           <Route path="tariff-calculator" element={<TariffCalculatorPage />} />
           <Route path="supplier-scan" element={<SupplierScanPage />} />
+          <Route path="cases/seizure" element={<SeizureCasesPage />} />
+          <Route path="cases/seizure/new" element={<NewSeizureCasePage />} />
+          <Route path="cases/seizure/:id" element={<SeizureCaseDetailPage />} />
         </Route>
 
         {/* 404 */}
