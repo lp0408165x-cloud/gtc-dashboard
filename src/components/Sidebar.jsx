@@ -1,6 +1,6 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { ShieldAlert } from 'lucide-react';
+import { ShieldAlert, AlertTriangle } from 'lucide-react';
 import {
   Shield, LayoutDashboard, FolderOpen, FilePlus, BarChart3,
   Settings, LogOut, Users, ChevronLeft, ChevronRight, Package,
@@ -26,6 +26,7 @@ const Sidebar = () => {
     { path: '/cases/new',           icon: FilePlus,        label: '新建案件',  adminOnly: false },
     { path: '/supply-chain-review', icon: Package,         label: '供应链审查',adminOnly: false },
     { path: '/supplier-scan',       icon: ShieldAlert,     label: '供应商扫描',adminOnly: false },
+    { path: '/cases/seizure', icon: AlertTriangle, label: '罚没应对', adminOnly: false, badge: 'NEW' },
     { path: '/tariff-calculator',   icon: Calculator,      label: '关税计算器',adminOnly: false },
     { path: '/analytics',           icon: BarChart3,       label: '数据分析',  adminOnly: false },
     { path: '/resources',           icon: BookOpen,        label: '资料库',    adminOnly: false },
@@ -67,7 +68,10 @@ const Sidebar = () => {
                 }
               >
                 <item.icon className="w-5 h-5 flex-shrink-0" />
-                {!collapsed && <span>{item.label}</span>}
+                {!collapsed && <span className="flex-1">{item.label}</span>}
+                {!collapsed && item.badge && (
+                  <span className="text-[9px] px-1.5 py-0.5 bg-red-500 text-white rounded-full font-semibold">{item.badge}</span>
+                )}
               </NavLink>
             </li>
           ))}
