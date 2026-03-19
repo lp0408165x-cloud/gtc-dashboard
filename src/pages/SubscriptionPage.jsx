@@ -20,6 +20,19 @@ import {
 } from 'lucide-react';
 
 const PLAN_CONFIG = {
+  const PLAN_CONFIG = {
+  trial: {
+    icon: Zap,
+    color: 'text-green-600',
+    bgColor: 'bg-green-50',
+    borderColor: 'border-green-200',
+    btnBg: 'bg-green-600 hover:bg-green-700 text-white',
+    label: '免费试用',
+    desc: '30天全功能体验',
+  },
+  basic: {
+    icon: Zap,
+    ...
   basic: {
     icon: Zap,
     color: 'text-blue-600',
