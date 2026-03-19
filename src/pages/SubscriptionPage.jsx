@@ -31,9 +31,6 @@ const PLAN_CONFIG = {
   },
   basic: {
     icon: Zap,
-    ...
-  basic: {
-    icon: Zap,
     color: 'text-blue-600',
     bgColor: 'bg-blue-50',
     borderColor: 'border-blue-200',
