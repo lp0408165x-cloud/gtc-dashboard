@@ -20,7 +20,6 @@ import {
 } from 'lucide-react';
 
 const PLAN_CONFIG = {
-  const PLAN_CONFIG = {
   trial: {
     icon: Zap,
     color: 'text-green-600',
