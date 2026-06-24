@@ -442,5 +442,32 @@ export const workflowAPI = {
   getReadiness: (caseId) =>         api.get(`/workflow/${caseId}/readiness`),
 };
 
+// ============================================================
+// 单证智能核查 API（独立版 / 影子案件）
+// ============================================================
+export const quickCheckAPI = {
+  // 获取/创建影子案件，清空旧数据，返回 { quick_case_id }
+  session: async () => {
+    const response = await api.post('/quick-check/session');
+    return response.data;
+  },
+  // 触发核查（引擎读 extractions）
+  run: async (caseId) => {
+    const response = await api.post(`/cases/${caseId}/cross-check/run`);
+    return response.data;
+  },
+  // 获取最新报告
+  getReport: async (caseId) => {
+    const response = await api.get(`/cases/${caseId}/cross-check/report`);
+    return response.data;
+  },
+  // 导出双语 Word（blob）
+  export: async (caseId) => {
+    const response = await api.get(`/cases/${caseId}/cross-check/export`, {
+      responseType: 'blob',
+    });
+    return response.data;
+  },
+};
 export default api;
 export { trainingAPI };
