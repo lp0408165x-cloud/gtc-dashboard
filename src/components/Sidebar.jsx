@@ -47,7 +47,7 @@ const Sidebar = () => {
       <div className="p-6 flex items-center justify-between border-b border-white/10">
         <div className="flex items-center gap-3">
           <Shield className="w-8 h-8 text-gtc-gold flex-shrink-0" />
-          {!collapsed && <span className="text-xl font-display font-bold text-white">GTC-AI</span>}
+          {!collapsed && <span className="text-xl font-display font-bold text-white">GTC-C</span>}
         </div>
         <button onClick={() => setCollapsed(!collapsed)} className="text-gray-400 hover:text-white transition-colors">
           {collapsed ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
