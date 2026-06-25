@@ -329,7 +329,9 @@ function ReportView({ report, onExport, exporting }) {
                : Array.isArray(r.core10) ? r.core10
                : Array.isArray(r.core_10) ? r.core_10
                : [];
-  const findings = Array.isArray(r.findings) ? r.findings : [];
+  const findings = Array.isArray(r.inconsistencies) ? r.inconsistencies
+               : Array.isArray(r.findings) ? r.findings
+               : [];
 
   return (
     <div className="mt-10 space-y-8">
@@ -355,7 +357,7 @@ function ReportView({ report, onExport, exporting }) {
             {reviewedDocs.map((d, i) => (
               <span key={i} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 rounded-lg text-sm text-gtc-navy">
                 <FileText className="w-3.5 h-3.5 text-gray-400" />
-                {safeText(d?.doc_type || d?.type || d?.name || d)}
+                {safeText(d?.abbr || d?.doc_kind || d?.doc_type || d?.type || d?.name || d)}
               </span>
             ))}
           </div>
@@ -382,14 +384,18 @@ function ReportView({ report, onExport, exporting }) {
                   const Icon = conf.icon;
                   return (
                     <tr key={i}>
-                      <td className="px-5 py-3 text-gtc-navy">{safeText(item.field_cn || item.field || item.label)}</td>
+                      <td className="px-5 py-3 text-gtc-navy">{safeText(item.cn || item.field_cn || item.field || item.label)}</td>
                       <td className="px-5 py-3">
                         <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg ${conf.bg} ${conf.cls} font-medium`}>
                           <Icon className="w-4 h-4" />
                           {conf.label}
                         </span>
                       </td>
-                      <td className="px-5 py-3 text-gray-500">{safeText(item.note || item.detail)}</td>
+                      <td className="px-5 py-3 text-gray-500">
+                        {Array.isArray(item.values) && item.values.length > 0
+                          ? item.values.map((v) => safeText(v?.value)).join('  /  ')
+                          : safeText(item.note || item.detail)}
+                      </td>
                     </tr>
                   );
                 })}
@@ -412,7 +418,7 @@ function ReportView({ report, onExport, exporting }) {
                 <div key={i} className="bg-white rounded-2xl border border-gray-200 p-5">
                   <div className="flex items-center justify-between mb-3">
                     <span className="font-medium text-gtc-navy">
-                      {safeText(item.field_cn || item.field_en || item.field)}
+                      {safeText(item.cn || item.field_cn || item.field_en || item.field)}
                     </span>
                     <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg ${conf.bg} ${conf.cls} text-sm font-medium`}>
                       <Icon className="w-4 h-4" />
