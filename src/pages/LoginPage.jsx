@@ -86,7 +86,7 @@ const LoginPage = () => {
         <div className="w-full max-w-md">
           <div className="lg:hidden flex items-center gap-3 mb-8 justify-center">
             <Shield className="w-10 h-10 text-gtc-gold" />
-            <span className="text-2xl font-display font-bold text-white">GTC-AI</span>
+            <span className="text-2xl font-display font-bold text-white">GTC-C</span>
           </div>
 
           <div className="bg-white rounded-2xl shadow-2xl p-8 animate-fade-in">
@@ -186,7 +186,7 @@ const LoginPage = () => {
           <div className="mt-8 text-center space-y-2">
             <p className="text-gray-400 text-sm lg:hidden">咨询热线：139-3850-8888（微信同号）</p>
             <p className="text-gray-400 text-sm">
-              © 2025 GTC-AI Global. All rights reserved.
+              © 2025 GTC-C Global. All rights reserved.
             </p>
           </div>
         </div>
