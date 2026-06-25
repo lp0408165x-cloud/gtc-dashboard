@@ -38,7 +38,7 @@ const LoginPage = () => {
         <div className="relative z-10 flex flex-col justify-center px-16">
           <div className="flex items-center gap-3 mb-8">
             <Shield className="w-12 h-12 text-gtc-gold" />
-            <span className="text-3xl font-display font-bold text-white">GTC-AI</span>
+            <span className="text-3xl font-display font-bold text-white">GTC-C</span>
           </div>
           
           <h1 className="text-5xl font-display font-bold text-white leading-tight mb-6">
