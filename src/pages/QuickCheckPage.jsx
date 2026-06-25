@@ -15,13 +15,17 @@ const MARK_CONFIG = {
 
 function normalizeMark(mark) {
   if (!mark) return 'na';
-  const m = String(mark).toLowerCase();
-  if (m.includes('一致') && !m.includes('不一致')) return 'consistent';
-  if (m.includes('consistent') && !m.includes('inconsistent')) return 'consistent';
-  if (m === 'ok' || m === 'pass') return 'consistent';
-  if (m.includes('不一致') || m.includes('inconsistent') || m === 'conflict' || m === 'fail') return 'inconsistent';
-  if (m.includes('待核实') || m.includes('pending') || m.includes('verify')) return 'pending';
-  if (m.includes('不适用') || m.includes('na') || m.includes('n/a')) return 'na';
+  const m = String(mark).toLowerCase().trim();
+  // emoji 直判
+  if (m.includes('✅')) return 'consistent';   // ✅
+  if (m.includes('⚡')) return 'inconsistent'; // ⚡
+  if (m.includes('⚠')) return 'pending';      // ⚠️
+  if (m.includes('➖')) return 'na';           // ➖
+  // 英文 status 直判（inconsistent 必须先于 consistent 判断）
+  if (m.includes('inconsistent') || m === 'conflict' || m === 'fail') return 'inconsistent';
+  if (m.includes('consistent') || m === 'ok' || m === 'pass') return 'consistent';
+  if (m.includes('pending') || m.includes('verify')) return 'pending';
+  if (m === 'na' || m.includes('n/a')) return 'na';
   return 'na';
 }
 
@@ -379,7 +383,7 @@ function ReportView({ report, onExport, exporting }) {
               <tbody className="divide-y divide-gray-100">
                 {core10.map((row, i) => {
                   const item = row || {};
-                  const key = normalizeMark(item.mark || item.status);
+                  const key = normalizeMark(item.status || item.mark);
                   const conf = MARK_CONFIG[key] || MARK_CONFIG.na;
                   const Icon = conf.icon;
                   return (
@@ -411,7 +415,7 @@ function ReportView({ report, onExport, exporting }) {
           <div className="space-y-3">
             {findings.map((fd, i) => {
               const item = fd || {};
-              const key = normalizeMark(item.mark || item.status);
+              const key = normalizeMark(item.status || item.mark);
               const conf = MARK_CONFIG[key] || MARK_CONFIG.inconsistent;
               const Icon = conf.icon;
               return (
