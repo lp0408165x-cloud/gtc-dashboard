@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import { quickCheckAPI, filesAPI, toolsAPI } from '../services/api';
 
-// 四色标记映射：✅一致 / ⚡不一致 / ⚠️待核实 / ➖不适用
+// 四色标记映射：一致 / 不一致 / 待核实 / 不适用
 const MARK_CONFIG = {
   consistent:   { icon: CheckCircle2,  cls: 'text-emerald-600', bg: 'bg-emerald-50',  label: '一致' },
   inconsistent: { icon: AlertTriangle, cls: 'text-red-600',     bg: 'bg-red-50',      label: '不一致' },
@@ -16,25 +16,27 @@ const MARK_CONFIG = {
 function normalizeMark(mark) {
   if (!mark) return 'na';
   const m = String(mark).toLowerCase();
-  if (m.includes('\u2705') || m.includes('consistent') || m === 'ok' || m === 'pass') return 'consistent';
-  if (m.includes('\u26a1') || m.includes('inconsistent') || m === 'conflict' || m === 'fail') return 'inconsistent';
-  if (m.includes('\u26a0') || m.includes('pending') || m.includes('verify')) return 'pending';
-  if (m.includes('\u2796') || m.includes('na') || m.includes('n/a')) return 'na';
+  if (m.includes('一致') && !m.includes('不一致')) return 'consistent';
+  if (m.includes('consistent') && !m.includes('inconsistent')) return 'consistent';
+  if (m === 'ok' || m === 'pass') return 'consistent';
+  if (m.includes('不一致') || m.includes('inconsistent') || m === 'conflict' || m === 'fail') return 'inconsistent';
+  if (m.includes('待核实') || m.includes('pending') || m.includes('verify')) return 'pending';
+  if (m.includes('不适用') || m.includes('na') || m.includes('n/a')) return 'na';
   return 'na';
 }
 
 const CONCLUSION_CONFIG = {
-  pass:    { cls: 'bg-emerald-100 text-emerald-800 border-emerald-300', text: '\u53ef\u653e\u884c\uff08\u5168\u90e8\u4e00\u81f4\uff09' },
-  clarify: { cls: 'bg-amber-100 text-amber-800 border-amber-300',       text: '\u9700\u6f84\u6e05\u540e\u653e\u884c' },
-  blocked: { cls: 'bg-red-100 text-red-800 border-red-300',             text: '\u5b58\u5728\u786c\u4f24\u987b\u4fee\u6b63' },
+  pass:    { cls: 'bg-emerald-100 text-emerald-800 border-emerald-300', text: '可放行（全部一致）' },
+  clarify: { cls: 'bg-amber-100 text-amber-800 border-amber-300',       text: '需澄清后放行' },
+  blocked: { cls: 'bg-red-100 text-red-800 border-red-300',             text: '存在硬伤须修正' },
 };
 
-const STEP_LABELS = ['\u4e0a\u4f20', '\u9884\u5904\u7406', '\u62bd\u53d6\u5b57\u6bb5'];
+const STEP_LABELS = ['上传', '预处理', '抽取字段'];
 
 function safeText(v) {
-  if (v === null || v === undefined) return '\u2014';
+  if (v === null || v === undefined) return '—';
   if (typeof v === 'string' || typeof v === 'number') return String(v);
-  if (typeof v === 'boolean') return v ? '\u662f' : '\u5426';
+  if (typeof v === 'boolean') return v ? '是' : '否';
   try {
     return JSON.stringify(v);
   } catch {
@@ -42,7 +44,7 @@ function safeText(v) {
   }
 }
 
-// ============ \u9519\u8bef\u8fb9\u754c\uff1a\u62a5\u544a\u533a\u5d29\u4e86\u4e5f\u4e0d\u767d\u5c4f ============
+// ============ 错误边界：报告区崩了也不白屏 ============
 class ReportErrorBoundary extends Component {
   constructor(props) {
     super(props);
@@ -52,15 +54,15 @@ class ReportErrorBoundary extends Component {
     return { hasError: true, error };
   }
   componentDidCatch(error, info) {
-    console.error('\u62a5\u544a\u6e32\u67d3\u5f02\u5e38:', error, info);
+    console.error('报告渲染异常:', error, info);
   }
   render() {
     if (this.state.hasError) {
       return (
         <div className="mt-10 p-6 bg-amber-50 border border-amber-200 rounded-2xl">
-          <p className="font-semibold text-amber-800 mb-2">\u62a5\u544a\u6e32\u67d3\u9047\u5230\u95ee\u9898</p>
+          <p className="font-semibold text-amber-800 mb-2">报告渲染遇到问题</p>
           <p className="text-sm text-amber-700 mb-4">
-            \u6838\u67e5\u5df2\u5b8c\u6210\uff0c\u4f46\u5c55\u793a\u62a5\u544a\u65f6\u51fa\u73b0\u5f02\u5e38\u3002\u4e0b\u65b9\u662f\u540e\u7aef\u8fd4\u56de\u7684\u539f\u59cb\u6570\u636e\uff0c\u53ef\u4f9b\u6392\u67e5\u3002
+            核查已完成，但展示报告时出现异常。下方是后端返回的原始数据，可供排查。
           </p>
           <RawJsonViewer data={this.props.rawReport} defaultOpen={true} />
         </div>
@@ -70,7 +72,7 @@ class ReportErrorBoundary extends Component {
   }
 }
 
-// ============ \u539f\u59cb JSON \u67e5\u770b\u533a\uff08\u53ef\u6298\u53e0\uff09 ============
+// ============ 原始 JSON 查看区（可折叠） ============
 function RawJsonViewer({ data, defaultOpen = false }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
@@ -80,7 +82,7 @@ function RawJsonViewer({ data, defaultOpen = false }) {
         className="flex items-center gap-2 w-full px-4 py-2.5 bg-gray-50 text-sm text-gray-600 hover:bg-gray-100 transition"
       >
         <Code className="w-4 h-4" />
-        {open ? '\u6536\u8d77\u539f\u59cb\u6570\u636e' : '\u67e5\u770b\u539f\u59cb\u6570\u636e\uff08\u8c03\u8bd5\u7528\uff09'}
+        {open ? '收起原始数据' : '查看原始数据（调试用）'}
       </button>
       {open && (
         <pre className="p-4 text-xs bg-gray-900 text-gray-100 overflow-auto max-h-96">
@@ -114,7 +116,7 @@ const QuickCheckPage = () => {
         const res = await quickCheckAPI.session();
         setQuickCaseId(res.quick_case_id);
       } catch (e) {
-        setSessionError('\u521d\u59cb\u5316\u5931\u8d25\uff0c\u8bf7\u5237\u65b0\u9875\u9762\u6216\u91cd\u65b0\u767b\u5f55');
+        setSessionError('初始化失败，请刷新页面或重新登录');
       }
     })();
   }, []);
@@ -173,8 +175,8 @@ const QuickCheckPage = () => {
         await toolsAPI.classifyExtract(fileId);
         update({ status: 'done', step: 3 });
       } catch (e) {
-        const msg = e.response?.data?.detail || e.message || '\u5904\u7406\u5931\u8d25';
-        update({ status: 'error', error: typeof msg === 'string' ? msg : '\u5904\u7406\u5931\u8d25' });
+        const msg = e.response?.data?.detail || e.message || '处理失败';
+        update({ status: 'error', error: typeof msg === 'string' ? msg : '处理失败' });
       }
     }
 
@@ -189,8 +191,8 @@ const QuickCheckPage = () => {
       const rep = await quickCheckAPI.getReport(quickCaseId);
       setReport(rep);
     } catch (e) {
-      const msg = e.response?.data?.detail || '\u6838\u67e5\u5931\u8d25\uff0c\u8bf7\u786e\u8ba4\u5df2\u6210\u529f\u62bd\u53d6\u81f3\u5c11 2 \u4efd\u5355\u8bc1';
-      alert(typeof msg === 'string' ? msg : '\u6838\u67e5\u5931\u8d25');
+      const msg = e.response?.data?.detail || '核查失败，请确认已成功抽取至少 2 份单证';
+      alert(typeof msg === 'string' ? msg : '核查失败');
     } finally {
       setRunning(false);
     }
@@ -204,13 +206,13 @@ const QuickCheckPage = () => {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `\u5355\u8bc1\u6838\u67e5\u62a5\u544a_${new Date().toISOString().slice(0, 10)}.docx`;
+      a.download = `单证核查报告_${new Date().toISOString().slice(0, 10)}.docx`;
       document.body.appendChild(a);
       a.click();
       a.remove();
       window.URL.revokeObjectURL(url);
     } catch (e) {
-      alert('\u5bfc\u51fa\u5931\u8d25');
+      alert('导出失败');
     } finally {
       setExporting(false);
     }
@@ -223,11 +225,11 @@ const QuickCheckPage = () => {
     <div className="max-w-6xl mx-auto px-6 py-8">
       <div className="flex items-center gap-3 mb-2">
         <FileSearch className="w-8 h-8 text-gtc-gold" />
-        <h1 className="text-2xl font-display font-bold text-gtc-navy">\u5355\u8bc1\u667a\u80fd\u6838\u67e5</h1>
+        <h1 className="text-2xl font-display font-bold text-gtc-navy">单证智能核查</h1>
         <span className="text-[10px] px-2 py-0.5 bg-red-500 text-white rounded-full font-semibold">NEW</span>
       </div>
       <p className="text-gray-500 mb-8">
-        \u4e0a\u4f20\u591a\u4efd\u5355\u8bc1\uff08\u63d0\u5355 B/L\u3001\u5546\u4e1a\u53d1\u7968 CI\u3001\u88c5\u7bb1\u5355 PL\u3001\u539f\u4ea7\u5730\u8bc1 COO \u7b49\uff09\uff0c\u7cfb\u7edf\u81ea\u52a8\u4ea4\u53c9\u6838\u5bf9\u6838\u5fc3\u5b57\u6bb5\uff0c\u8f93\u51fa\u56db\u8272\u6807\u8bb0\u62a5\u544a\u3002\u65e0\u9700\u7acb\u6848\uff0c\u5373\u4f20\u5373\u67e5\u3002
+        上传多份单证（提单 B/L、商业发票 CI、装箱单 PL、原产地证 COO 等），系统自动交叉核对核心字段，输出四色标记报告。无需立案，即传即查。
       </p>
 
       {sessionError && (
@@ -253,8 +255,8 @@ const QuickCheckPage = () => {
           className="hidden"
         />
         <Upload className="w-10 h-10 text-gray-400 mx-auto mb-3" />
-        <p className="text-gray-600 font-medium">\u70b9\u51fb\u6216\u62d6\u62fd\u4e0a\u4f20\u5355\u8bc1</p>
-        <p className="text-gray-400 text-sm mt-1">\u652f\u6301 PDF / \u56fe\u7247 / Excel\uff0c\u81f3\u5c11 2 \u4efd\u624d\u80fd\u6838\u5bf9</p>
+        <p className="text-gray-600 font-medium">点击或拖拽上传单证</p>
+        <p className="text-gray-400 text-sm mt-1">支持 PDF / 图片 / Excel，至少 2 份才能核对</p>
       </div>
 
       {files.length > 0 && (
@@ -265,7 +267,7 @@ const QuickCheckPage = () => {
               <div className="flex-1 min-w-0">
                 <p className="text-sm text-gtc-navy truncate">{f.name}</p>
                 {f.status === 'processing' && (
-                  <p className="text-xs text-gray-400">{STEP_LABELS[f.step] || '\u5904\u7406\u4e2d'}\u2026</p>
+                  <p className="text-xs text-gray-400">{STEP_LABELS[f.step] || '处理中'}…</p>
                 )}
                 {f.status === 'error' && (
                   <p className="text-xs text-red-500 truncate">{f.error}</p>
@@ -292,7 +294,7 @@ const QuickCheckPage = () => {
             className="flex items-center gap-2 px-5 py-2.5 bg-gtc-navy text-white rounded-xl font-medium disabled:opacity-40 hover:opacity-90 transition"
           >
             {processing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-            {processing ? '\u5904\u7406\u4e2d\u2026' : '\u89e3\u6790\u5355\u8bc1'}
+            {processing ? '处理中…' : '解析单证'}
           </button>
           <button
             onClick={runCheck}
@@ -300,7 +302,7 @@ const QuickCheckPage = () => {
             className="flex items-center gap-2 px-5 py-2.5 bg-gtc-gold text-gtc-navy rounded-xl font-semibold disabled:opacity-40 hover:opacity-90 transition"
           >
             {running ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
-            {running ? '\u6838\u67e5\u4e2d\u2026' : `\u5f00\u59cb\u6838\u67e5\uff08${doneCount} \u4efd\u5c31\u7eea\uff09`}
+            {running ? '核查中…' : `开始核查（${doneCount} 份就绪）`}
           </button>
         </div>
       )}
@@ -314,7 +316,7 @@ const QuickCheckPage = () => {
   );
 };
 
-// ============ \u62a5\u544a\u5c55\u793a\uff08\u5168\u9762\u5bb9\u9519\uff09 ============
+// ============ 报告展示（全面容错） ============
 function ReportView({ report, onExport, exporting }) {
   const r = report || {};
   const conclusionCode = r.conclusion_code || r.conclusionCode || 'clarify';
@@ -333,7 +335,7 @@ function ReportView({ report, onExport, exporting }) {
     <div className="mt-10 space-y-8">
       <div className={`flex flex-wrap items-center justify-between gap-4 p-5 rounded-2xl border ${cc.cls}`}>
         <div>
-          <p className="text-xs uppercase tracking-wide opacity-70">\u6838\u67e5\u7ed3\u8bba</p>
+          <p className="text-xs uppercase tracking-wide opacity-70">核查结论</p>
           <p className="text-xl font-bold">{cc.text}</p>
         </div>
         <button
@@ -342,13 +344,13 @@ function ReportView({ report, onExport, exporting }) {
           className="flex items-center gap-2 px-4 py-2 bg-white/70 rounded-xl font-medium disabled:opacity-50 hover:bg-white transition"
         >
           {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-          \u5bfc\u51fa\u62a5\u544a
+          导出报告
         </button>
       </div>
 
       {reviewedDocs.length > 0 && (
         <div>
-          <h3 className="text-sm font-semibold text-gtc-navy mb-3">\u5df2\u5ba1\u9605\u5355\u8bc1\uff08{reviewedDocs.length}\uff09</h3>
+          <h3 className="text-sm font-semibold text-gtc-navy mb-3">已审阅单证（{reviewedDocs.length}）</h3>
           <div className="flex flex-wrap gap-2">
             {reviewedDocs.map((d, i) => (
               <span key={i} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 rounded-lg text-sm text-gtc-navy">
@@ -362,14 +364,14 @@ function ReportView({ report, onExport, exporting }) {
 
       {core10.length > 0 && (
         <div>
-          <h3 className="text-sm font-semibold text-gtc-navy mb-3">\u6838\u5fc3 10 \u9879\u6838\u5bf9</h3>
+          <h3 className="text-sm font-semibold text-gtc-navy mb-3">核心 10 项核对</h3>
           <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-gray-50 text-gray-500 text-left">
-                  <th className="px-5 py-3 font-medium">\u6838\u5bf9\u9879</th>
-                  <th className="px-5 py-3 font-medium w-32">\u7ed3\u679c</th>
-                  <th className="px-5 py-3 font-medium">\u8bf4\u660e</th>
+                  <th className="px-5 py-3 font-medium">核对项</th>
+                  <th className="px-5 py-3 font-medium w-32">结果</th>
+                  <th className="px-5 py-3 font-medium">说明</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -399,7 +401,7 @@ function ReportView({ report, onExport, exporting }) {
 
       {findings.length > 0 && (
         <div>
-          <h3 className="text-sm font-semibold text-gtc-navy mb-3">\u4e0d\u4e00\u81f4\u660e\u7ec6\uff08{findings.length}\uff09</h3>
+          <h3 className="text-sm font-semibold text-gtc-navy mb-3">不一致明细（{findings.length}）</h3>
           <div className="space-y-3">
             {findings.map((fd, i) => {
               const item = fd || {};
@@ -419,17 +421,17 @@ function ReportView({ report, onExport, exporting }) {
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
                     <div className="bg-gray-50 rounded-lg p-3">
-                      <p className="text-xs text-gray-400 mb-1">{safeText(item.doc_a) === '\u2014' ? '\u6587\u4ef6 A' : safeText(item.doc_a)}</p>
+                      <p className="text-xs text-gray-400 mb-1">{safeText(item.doc_a) === '—' ? '文件 A' : safeText(item.doc_a)}</p>
                       <p className="text-gtc-navy break-words">{safeText(item.value_a)}</p>
                     </div>
                     <div className="bg-gray-50 rounded-lg p-3">
-                      <p className="text-xs text-gray-400 mb-1">{safeText(item.doc_b) === '\u2014' ? '\u6587\u4ef6 B' : safeText(item.doc_b)}</p>
+                      <p className="text-xs text-gray-400 mb-1">{safeText(item.doc_b) === '—' ? '文件 B' : safeText(item.doc_b)}</p>
                       <p className="text-gtc-navy break-words">{safeText(item.value_b)}</p>
                     </div>
                   </div>
                   {item.impact && (
                     <p className="mt-3 text-xs text-amber-700 bg-amber-50 rounded-lg px-3 py-2">
-                      \u5f71\u54cd\u73af\u8282\uff1a{safeText(item.impact)}
+                      影响环节：{safeText(item.impact)}
                     </p>
                   )}
                 </div>
@@ -447,7 +449,7 @@ function ReportView({ report, onExport, exporting }) {
 
       {core10.length === 0 && findings.length === 0 && (
         <div className="p-5 bg-amber-50 border border-amber-200 rounded-2xl text-sm text-amber-700">
-          \u62a5\u544a\u5df2\u751f\u6210\uff0c\u4f46\u672a\u89e3\u6790\u5230\u6838\u5fc3 10 \u9879\u6216\u4e0d\u4e00\u81f4\u660e\u7ec6\u3002\u8bf7\u67e5\u770b\u4e0b\u65b9\u539f\u59cb\u6570\u636e\u786e\u8ba4\u540e\u7aef\u8fd4\u56de\u7ed3\u6784\u3002
+          报告已生成，但未解析到核心 10 项或不一致明细。请查看下方原始数据确认后端返回结构。
         </div>
       )}
 
