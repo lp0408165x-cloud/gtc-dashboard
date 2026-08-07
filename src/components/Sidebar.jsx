@@ -4,7 +4,7 @@ import { ShieldAlert, AlertTriangle } from 'lucide-react';
 import {
   Shield, LayoutDashboard, FolderOpen, FilePlus, BarChart3,
   Settings, LogOut, Users, ChevronLeft, ChevronRight, Package,
-  CreditCard, BookOpen, GraduationCap, Calculator,FileSearch,
+  CreditCard, BookOpen, GraduationCap, Calculator,FileSearch,Sun,
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -29,6 +29,7 @@ const Sidebar = () => {
     { path: '/cases/seizure', icon: AlertTriangle, label: '罚没应对', adminOnly: false, badge: 'NEW' },
     { path: '/tariff-calculator',   icon: Calculator,      label: '关税计算器',adminOnly: false },
     { path: '/quick-check', icon: FileSearch, label: '单证核查', adminOnly: false, badge: 'NEW' },
+    { path: '/solar-tariff',        icon: Sun,             label: '光伏税负测算',adminOnly: false, badge: 'NEW' },
     { path: '/analytics',           icon: BarChart3,       label: '数据分析',  adminOnly: false },
     { path: '/resources',           icon: BookOpen,        label: '资料库',    adminOnly: false },
     { path: '/subscription',        icon: CreditCard,      label: '订阅管理',  adminOnly: false },
