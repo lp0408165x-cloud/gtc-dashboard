@@ -26,6 +26,7 @@ import SeizureCasesPage from './pages/SeizureCasesPage';
 import NewSeizureCasePage from './pages/NewSeizureCasePage';
 import SeizureCaseDetailPage from './pages/SeizureCaseDetailPage';
 import QuickCheckPage from './pages/QuickCheckPage';
+import SolarTariffPage from './pages/SolarTariffPage';
 
 
 function App() {
@@ -57,6 +58,7 @@ function App() {
           <Route path="training/certificates" element={<CertificatesPage />} />
           <Route path="training/admin" element={<TrainingAdmin />} />
           <Route path="tariff-calculator" element={<TariffCalculatorPage />} />
+          <Route path="solar-tariff" element={<SolarTariffPage />} />
           <Route path="quick-check" element={<QuickCheckPage />} />
           <Route path="supplier-scan" element={<SupplierScanPage />} />
           <Route path="cases/seizure" element={<SeizureCasesPage />} />
