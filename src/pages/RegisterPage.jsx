@@ -281,6 +281,25 @@ const RegisterPage = () => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
+                  密码 <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <input
+                    type="password"
+                    name="password"
+                    value={formData.password}
+                    onChange={handleChange}
+                    className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gtc-gold focus:border-transparent transition-all"
+                    placeholder="至少8位密码"
+                    minLength={8}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   确认密码 <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
