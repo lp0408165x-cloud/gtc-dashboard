@@ -1,9 +1,11 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Ship, Plus, RefreshCw, Loader2, X, AlertTriangle, Filter,
   ClipboardList, ShieldCheck, Users, FileText, Wrench, History,
+  Upload, FileSearch, CheckCircle2, Play,
 } from 'lucide-react';
 import { shipmentsAPI } from '../services/shipmentsApi';
+import { filesAPI, toolsAPI, quickCheckAPI } from '../services/api';
 
 // ══════════════════════════════════════════════════════════
 // 状态 / 动作字典（与 backend/app/services/shipment_state_machine.py 对齐）
@@ -78,6 +80,28 @@ const PAYLOAD_FORMS = {
     build: (v) => ({ entry_no: v.entry_no, port_code: v.port_code, bond_ref: v.bond_ref || undefined }),
   },
 };
+
+// 单证类型（登记到 shipment_documents 的 doc_type）
+const DOC_TYPES = [
+  { v: 'CI', l: 'CI 商业发票' },
+  { v: 'PL', l: 'PL 装箱单' },
+  { v: 'BL', l: 'BL 提单' },
+  { v: 'COO', l: 'COO 原产地证' },
+  { v: 'OTHER', l: '其他' },
+];
+
+// 核查结论码配色（与 QuickCheckPage 一致）
+const CONCLUSION_CONFIG = {
+  pass:    { cls: 'bg-emerald-50 text-emerald-800 border-emerald-300', text: '可放行（全部一致）' },
+  clarify: { cls: 'bg-amber-50 text-amber-800 border-amber-300',       text: '需澄清后放行' },
+  blocked: { cls: 'bg-red-50 text-red-800 border-red-300',             text: '存在硬伤须修正' },
+};
+
+// 单文件处理链路：与 QuickCheckPage 相同，末尾多一步登记到货件
+const UPLOAD_STEPS = ['上传', '预处理', '抽取字段', '登记'];
+
+// 只有出口商与运营可以传单证 / 跑工具（与状态机 run_tools 的 allowed 一致）
+const TOOL_TENANTS = ['exporter', 'gtc'];
 
 const VIEW_CONFIG = {
   exporter: { title: '我的货件', hint: '只显示本公司创建的货件' },
@@ -252,7 +276,263 @@ function KV({ k, v }) {
   );
 }
 
-function Drawer({ shipmentId, onClose, refreshKey }) {
+function DocsAndCheck({ shipmentId, documents, onChanged }) {
+  const [caseId, setCaseId] = useState(null);
+  const [caseErr, setCaseErr] = useState('');
+  const [files, setFiles] = useState([]);
+  const [registered, setRegistered] = useState([]);
+  const [processing, setProcessing] = useState(false);
+  const [running, setRunning] = useState(false);
+  const [report, setReport] = useState(null);
+  const [err, setErr] = useState('');
+  const inputRef = useRef(null);
+
+  // 影子案件：文件上传 / 抽取全部挂在它下面
+  useEffect(() => {
+    let alive = true;
+    setCaseErr('');
+    shipmentsAPI.getCase(shipmentId)
+      .then((d) => { if (alive) setCaseId(d.case_id); })
+      .catch((e) => { if (alive) setCaseErr(errText(e)); });
+    return () => { alive = false; };
+  }, [shipmentId]);
+
+  const addFiles = (fileList) => {
+    const arr = Array.from(fileList).map((f, i) => ({
+      key: `${Date.now()}_${i}_${f.name}`,
+      name: f.name,
+      file: f,
+      docType: 'OTHER',
+      status: 'pending',
+      step: 0,
+      error: '',
+    }));
+    setFiles((prev) => [...prev, ...arr]);
+  };
+
+  const setDocType = (key, v) =>
+    setFiles((prev) => prev.map((x) => (x.key === key ? { ...x, docType: v } : x)));
+
+  const removeFile = (key) => setFiles((prev) => prev.filter((x) => x.key !== key));
+
+  // 逐个文件：上传 → 预处理 → 抽取 → 登记到货件
+  const processAll = async () => {
+    if (!caseId || !files.length) return;
+    setProcessing(true);
+    setErr('');
+    const done = [];
+
+    for (const f of files) {
+      if (f.status === 'done') continue;
+      const patch = (p) =>
+        setFiles((prev) => prev.map((x) => (x.key === f.key ? { ...x, ...p } : x)));
+      try {
+        patch({ status: 'processing', step: 0, error: '' });
+        const up = await filesAPI.upload(caseId, f.file, 'document');
+        const fileId = up.file_id || up.id;
+        patch({ step: 1 });
+
+        await toolsAPI.preprocess(fileId);
+        patch({ step: 2 });
+
+        await toolsAPI.classifyExtract(fileId);
+        patch({ step: 3 });
+
+        const doc = await shipmentsAPI.addDocument(shipmentId, {
+          file_id: fileId,
+          doc_type: f.docType,
+        });
+        done.push({ ...doc, file_name: doc.file_name || f.name });
+        patch({ status: 'done' });
+      } catch (e) {
+        patch({ status: 'error', error: errText(e) });
+      }
+    }
+
+    if (done.length) {
+      setRegistered((prev) => [...prev, ...done]);
+      onChanged?.();
+    }
+    setProcessing(false);
+  };
+
+  const runCheck = async () => {
+    setRunning(true);
+    setErr('');
+    try {
+      const res = await shipmentsAPI.runCrossCheck(shipmentId);
+      // 运行接口不返回明细，明细从案件级报告接口取（同一张报告）
+      let full = null;
+      try {
+        full = await quickCheckAPI.getReport(res.case_id);
+      } catch {
+        full = null;
+      }
+      setReport({
+        conclusion_code: res.conclusion_code || full?.conclusion_code,
+        conclusion: full?.conclusion || res.report?.conclusion,
+        doc_count: full?.doc_count ?? res.report?.doc_count,
+        inconsistencies: full?.inconsistencies || [],
+        detailLoaded: !!full,
+      });
+      onChanged?.();
+    } catch (e) {
+      setErr(errText(e));
+    } finally {
+      setRunning(false);
+    }
+  };
+
+  // 详情接口暂未返回 documents，回落到本次上传登记的
+  const docList = Array.isArray(documents) && documents.length ? documents : registered;
+  const conclusion = report ? (CONCLUSION_CONFIG[report.conclusion_code] || null) : null;
+
+  return (
+    <Section icon={FileSearch} title="单证与核查">
+      {caseErr && <p className="text-red-600 mb-3">{caseErr}</p>}
+
+      {/* 上传区 */}
+      <div
+        onClick={() => !processing && inputRef.current?.click()}
+        className="border-2 border-dashed border-gray-300 rounded-xl p-5 text-center cursor-pointer hover:border-gtc-gold transition-colors"
+      >
+        <input
+          ref={inputRef}
+          type="file"
+          multiple
+          accept=".pdf,.png,.jpg,.jpeg,.xlsx,.xls"
+          className="hidden"
+          onChange={(e) => { if (e.target.files?.length) addFiles(e.target.files); e.target.value = ''; }}
+        />
+        <Upload className="w-6 h-6 text-gray-400 mx-auto mb-1.5" />
+        <p className="text-sm text-gray-600">点击选择单证（可多选）</p>
+        <p className="text-xs text-gray-400 mt-0.5">PDF / 图片 / Excel，至少 2 份才能交叉核对</p>
+      </div>
+
+      {/* 待处理文件 */}
+      {files.length > 0 && (
+        <div className="mt-3 border border-gray-200 rounded-xl divide-y divide-gray-100">
+          {files.map((f) => (
+            <div key={f.key} className="flex items-center gap-2 px-3 py-2">
+              <FileText className="w-4 h-4 text-gray-400 flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-xs text-gtc-navy truncate">{f.name}</p>
+                {f.status === 'processing' && (
+                  <p className="text-[11px] text-gray-400">{UPLOAD_STEPS[f.step] || '处理中'}…</p>
+                )}
+                {f.status === 'error' && <p className="text-[11px] text-red-500 truncate">{f.error}</p>}
+              </div>
+              <select
+                value={f.docType}
+                disabled={processing || f.status === 'done'}
+                onChange={(e) => setDocType(f.key, e.target.value)}
+                className="text-[11px] border border-gray-200 rounded-lg px-1.5 py-1 bg-white disabled:bg-gray-50"
+              >
+                {DOC_TYPES.map((d) => <option key={d.v} value={d.v}>{d.l}</option>)}
+              </select>
+              {f.status === 'processing' && <Loader2 className="w-3.5 h-3.5 text-gtc-gold animate-spin" />}
+              {f.status === 'done' && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />}
+              {f.status === 'error' && <AlertTriangle className="w-3.5 h-3.5 text-red-500" />}
+              {!processing && f.status !== 'done' && (
+                <button onClick={() => removeFile(f.key)} className="text-gray-300 hover:text-red-500">
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* 操作 */}
+      <div className="mt-3 flex flex-wrap gap-2">
+        <button
+          onClick={processAll}
+          disabled={!caseId || processing || !files.some((f) => f.status !== 'done')}
+          className={btnSecondary}
+        >
+          {processing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+          上传并抽取
+        </button>
+        <button onClick={runCheck} disabled={running || processing} className={btnPrimary}>
+          {running ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5" />}
+          运行单证核查
+        </button>
+      </div>
+
+      {err && <p className="mt-3 text-xs text-red-600">{err}</p>}
+
+      {/* 已登记单证 */}
+      <div className="mt-4">
+        <p className="text-xs font-semibold text-gtc-navy mb-1.5">已登记单证（{docList.length}）</p>
+        {!docList.length ? (
+          <p className="text-xs text-gray-400">暂无</p>
+        ) : (
+          <ul className="space-y-1">
+            {docList.map((d) => (
+              <li key={d.id} className="flex items-center gap-2 text-xs">
+                <FileText className="w-3.5 h-3.5 text-gray-300 flex-shrink-0" />
+                <span className="text-gtc-navy truncate flex-1">{d.file_name || `文件 #${d.file_id}`}</span>
+                <span className="text-gray-400">{d.doc_type || 'OTHER'}</span>
+                {d.version > 1 && <span className="text-gray-300">v{d.version}</span>}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      {/* 核查结果 */}
+      {report && (
+        <div className="mt-4">
+          <div className={`px-4 py-3 rounded-xl border ${conclusion?.cls || 'bg-gray-50 text-gray-700 border-gray-200'}`}>
+            <p className="font-semibold text-sm">
+              {conclusion?.text || report.conclusion || report.conclusion_code || '核查完成'}
+            </p>
+            <p className="text-xs mt-0.5 opacity-80">
+              结论码 {report.conclusion_code || '—'}
+              {report.doc_count != null && ` · 核对 ${report.doc_count} 份单证`}
+              {` · 不一致 ${report.inconsistencies.length} 项`}
+            </p>
+          </div>
+
+          {report.inconsistencies.length > 0 && (
+            <div className="mt-2 border border-gray-200 rounded-xl overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="text-left text-gray-500 border-b border-gray-200 bg-gray-50">
+                    <th className="px-3 py-2 font-medium">字段</th>
+                    <th className="px-3 py-2 font-medium">文件 A</th>
+                    <th className="px-3 py-2 font-medium">文件 B</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {report.inconsistencies.map((f, i) => (
+                    <tr key={i} className="border-b border-gray-100 last:border-0 align-top">
+                      <td className="px-3 py-2 text-gtc-navy font-medium whitespace-nowrap">{f.field_cn}</td>
+                      <td className="px-3 py-2">
+                        <p className="text-gray-400">{f.doc_a}</p>
+                        <p className="text-red-600 break-all">{f.value_a}</p>
+                      </td>
+                      <td className="px-3 py-2">
+                        <p className="text-gray-400">{f.doc_b}</p>
+                        <p className="text-red-600 break-all">{f.value_b}</p>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {!report.detailLoaded && (
+            <p className="mt-2 text-xs text-gray-400">明细报告读取失败，仅显示结论。</p>
+          )}
+        </div>
+      )}
+    </Section>
+  );
+}
+
+function Drawer({ shipmentId, onClose, refreshKey, tenantType, onChanged }) {
   const [detail, setDetail] = useState(null);
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -300,6 +580,14 @@ function Drawer({ shipmentId, onClose, refreshKey }) {
                 <KV k="创建时间" v={fmtTime(detail.created_at)} />
                 <KV k="更新时间" v={fmtTime(detail.updated_at)} />
               </Section>
+
+              {TOOL_TENANTS.includes(tenantType) && (
+                <DocsAndCheck
+                  shipmentId={shipmentId}
+                  documents={detail.documents}
+                  onChanged={onChanged}
+                />
+              )}
 
               <Section icon={ShieldCheck} title="闸门记录" count={detail.gate_decisions?.length || 0}>
                 {!detail.gate_decisions?.length ? <p className="text-gray-400">暂无</p> : detail.gate_decisions.map((g) => (
@@ -587,7 +875,15 @@ export default function ShipmentsPage() {
           onSubmit={(payload) => runTransition(pending.shipment.id, pending.action, payload)}
         />
       )}
-      {drawerId != null && <Drawer shipmentId={drawerId} refreshKey={drawerKey} onClose={() => setDrawerId(null)} />}
+      {drawerId != null && (
+        <Drawer
+          shipmentId={drawerId}
+          refreshKey={drawerKey}
+          tenantType={tenantType}
+          onClose={() => setDrawerId(null)}
+          onChanged={async () => { setDrawerKey((k) => k + 1); await load(); }}
+        />
+      )}
     </div>
   );
 }

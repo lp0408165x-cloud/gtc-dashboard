@@ -1,8 +1,9 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   Sun, Calculator, Info, AlertTriangle, ChevronRight,
-  TrendingUp, FileText, Shield, RotateCcw
+  TrendingUp, FileText, Shield, RotateCcw, Ship, Loader2, CheckCircle2
 } from 'lucide-react';
+import { shipmentsAPI } from '../services/shipmentsApi';
 
 // ══════════════════════════════════════════════════════════
 // 政策参数（政策变动时只需修改此处）
@@ -59,6 +60,25 @@ export default function SolarTariffPage() {
     adRate: '0', cvdRate: '0', s232Base: 'MIP', hasMipDoc: true, isOcean: true, wattage: '',
   });
 
+  // 可选：把测算结果挂到某条货件（写 tool_results）。不选则页面行为完全不变。
+  const [shipments, setShipments] = useState([]);
+  const [shipmentId, setShipmentId] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [saveMsg, setSaveMsg] = useState('');
+  const [saveErr, setSaveErr] = useState('');
+
+  useEffect(() => {
+    let alive = true;
+    shipmentsAPI.list()
+      .then((d) => {
+        if (!alive) return;
+        const open = (d?.items || []).filter((s) => s.status !== 'closed');
+        setShipments(open);
+      })
+      .catch(() => { /* 没有货件通道权限时静默降级，测算功能不受影响 */ });
+    return () => { alive = false; };
+  }, []);
+
   const country = COUNTRIES.find((c) => c.code === form.country) || COUNTRIES[0];
 
   const calc = useMemo(() => {
@@ -106,6 +126,40 @@ export default function SolarTariffPage() {
     { label: 'MFN 基础税率', v: calc.mfn, hint: 'HTS 8541.42 / 8541.43 = Free' },
     { label: 'MPF + HMF 规费', v: calc.fees, hint: form.isOcean ? '0.3464% + 0.125%' : '0.3464%（空运无 HMF）' },
   ];
+
+  const saveToShipment = async () => {
+    if (!shipmentId) return;
+    setSaving(true);
+    setSaveMsg('');
+    setSaveErr('');
+    try {
+      const res = await shipmentsAPI.addToolResult(Number(shipmentId), {
+        tool_name: 'solar_tariff',
+        result: {
+          policy: POLICY,
+          inputs: { ...form },
+          country: { code: country.code, label: country.label, s301: country.s301, note: country.note },
+          breakdown: rows.map((r) => ({ label: r.label, value: r.v, hint: r.hint })),
+          totals: {
+            entered_value: calc.ev,
+            total_duty: calc.totalDuty,
+            landed_cost: calc.landed,
+            duty_ratio: calc.ratio,
+            alt_landed_cost: calc.altLanded,
+            project_total: calc.projTotal,
+            project_duty: calc.projDuty,
+          },
+          calculated_at: new Date().toISOString(),
+        },
+      });
+      const no = shipments.find((s) => String(s.id) === String(shipmentId))?.shipment_no || `#${shipmentId}`;
+      setSaveMsg(`已挂到 ${no}，货件状态：${res.shipment_status}`);
+    } catch (e) {
+      setSaveErr(e?.response?.data?.detail || e?.message || '保存失败');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const inputCls = 'w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-gtc-gold focus:ring-1 focus:ring-gtc-gold transition-all';
   const labelCls = 'block text-sm font-medium text-gtc-navy mb-1.5';
@@ -306,6 +360,50 @@ export default function SolarTariffPage() {
         </div>
         <p className="text-xs text-amber-700 mt-2">建议：CBP 指引发布前，按保守口径（按 MIP）做预算。</p>
       </div>
+
+      {/* 挂到货件（可选） */}
+      {shipments.length > 0 && (
+        <div className="bg-white border border-gray-200 rounded-2xl p-5">
+          <p className="font-semibold text-gtc-navy text-sm mb-3 flex items-center gap-2">
+            <Ship className="w-4 h-4 text-gtc-gold" />挂到货件（可选）
+          </p>
+          <p className="text-xs text-gray-500 mb-3">
+            选择一条货件后保存，本次测算会写入该货件的工具结果。货件处于「单证已传」时会自动推进到「工具已跑」。
+          </p>
+          <div className="flex flex-wrap items-center gap-3">
+            <select
+              value={shipmentId}
+              onChange={(e) => { setShipmentId(e.target.value); setSaveMsg(''); setSaveErr(''); }}
+              className="flex-1 min-w-[16rem] px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-gtc-gold"
+            >
+              <option value="">不挂载（仅本页测算）</option>
+              {shipments.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.shipment_no}{s.description ? ` · ${s.description}` : ''}
+                </option>
+              ))}
+            </select>
+            <button
+              onClick={saveToShipment}
+              disabled={!shipmentId || saving}
+              className="flex items-center gap-1.5 bg-gtc-gold text-gtc-navy px-4 py-2.5 rounded-xl text-sm font-bold hover:bg-gtc-gold/90 transition-colors disabled:opacity-40"
+            >
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Ship className="w-4 h-4" />}
+              保存测算结果
+            </button>
+          </div>
+          {saveMsg && (
+            <p className="mt-3 text-sm text-emerald-700 flex items-center gap-1.5">
+              <CheckCircle2 className="w-4 h-4" />{saveMsg}
+            </p>
+          )}
+          {saveErr && (
+            <p className="mt-3 text-sm text-red-600 flex items-center gap-1.5">
+              <AlertTriangle className="w-4 h-4" />{saveErr}
+            </p>
+          )}
+        </div>
+      )}
 
       {/* 说明 */}
       <div className="bg-white border border-gray-200 rounded-2xl p-5">

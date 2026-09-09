@@ -51,6 +51,36 @@ export const shipmentsAPI = {
     const response = await api.get(`/shipments/${id}/events`);
     return response.data;
   },
+
+  // ---- Step 2a：工具结果写入脊柱 ----
+
+  // 影子案件（不存在则由后端创建）：{ shipment_id, shipment_no, case_id, case_type, company_id }
+  // 文件上传 / 预处理 / 抽取全部复用案件链路，用这个 case_id
+  getCase: async (id) => {
+    const response = await api.get(`/shipments/${id}/case`);
+    return response.data;
+  },
+
+  // 登记单证：{ file_id, doc_type } → shipment_documents
+  addDocument: async (id, body) => {
+    const response = await api.post(`/shipments/${id}/documents`, body);
+    return response.data;
+  },
+
+  // 跑单证核查：报告照旧写 cross_check_reports，同时写一条 tool_results
+  // 返回 { tool_result_id, case_id, shipment_status, conclusion_code, report }
+  // 注意：report 不含 inconsistencies，明细需另取 /cases/{case_id}/cross-check/report
+  runCrossCheck: async (id) => {
+    const response = await api.post(`/shipments/${id}/tools/cross-check/run`);
+    return response.data;
+  },
+
+  // 通用工具结果写入：{ tool_name, conclusion_code?, result?, run_id? }
+  // 货件处于 docs_uploaded 时后端会自动流转到 tools_run
+  addToolResult: async (id, body) => {
+    const response = await api.post(`/shipments/${id}/tool-results`, body);
+    return response.data;
+  },
 };
 
 export default shipmentsAPI;
