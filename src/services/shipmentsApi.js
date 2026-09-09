@@ -75,6 +75,15 @@ export const shipmentsAPI = {
     return response.data;
   },
 
+  // 下载核查报告（双语 Word），返回 blob。
+  // 仅已解锁（订阅生效）或 gtc 运营可调；未解锁后端返回 402/403，前端按 detail 提示。
+  downloadCrossCheckReport: async (id) => {
+    const response = await api.get(`/shipments/${id}/tools/cross-check/report`, {
+      responseType: 'blob',
+    });
+    return response.data;
+  },
+
   // 通用工具结果写入：{ tool_name, conclusion_code?, result?, run_id? }
   // 货件处于 docs_uploaded 时后端会自动流转到 tools_run
   addToolResult: async (id, body) => {
