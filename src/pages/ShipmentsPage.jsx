@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { shipmentsAPI } from '../services/shipmentsApi';
 import { filesAPI, toolsAPI, quickCheckAPI } from '../services/api';
+import ErrorBoundary from '../components/ErrorBoundary';
 
 // ══════════════════════════════════════════════════════════
 // 状态 / 动作字典（与 backend/app/services/shipment_state_machine.py 对齐）
@@ -120,7 +121,32 @@ const fmtTime = (s) => {
   const d = new Date(s);
   return isNaN(d) ? String(s) : d.toLocaleString('zh-CN', { hour12: false });
 };
-const errText = (e) => e?.response?.data?.detail || e?.message || '请求失败';
+// 后端的 detail 不一定是字符串：
+//   - 订阅拦截器返回 object：{error, message, required_plan}
+//   - FastAPI 422 返回 array：[{loc, msg, type}, ...]
+// 直接把它塞进 JSX 会抛「Objects are not valid as a React child」，整页白屏。
+// 这里统一压成字符串，调用方拿到的一定能安全渲染。
+function detailToText(d) {
+  if (d == null) return '';
+  if (typeof d === 'string') return d;
+  if (Array.isArray(d)) {
+    return d.map((x) => (typeof x === 'string' ? x : x?.msg || JSON.stringify(x))).join('；');
+  }
+  if (typeof d === 'object') {
+    if (typeof d.message === 'string') return d.message;
+    if (typeof d.detail === 'string') return d.detail;
+    if (typeof d.error === 'string') return d.error;
+    try { return JSON.stringify(d); } catch { return String(d); }
+  }
+  return String(d);
+}
+
+const errText = (e) => {
+  const fromDetail = detailToText(e?.response?.data?.detail);
+  if (fromDetail) return fromDetail;
+  if (typeof e?.message === 'string' && e.message) return e.message;
+  return '请求失败';
+};
 
 function StatusBadge({ status }) {
   const c = STATUS_CONFIG[status] || { label: status || '—', cls: 'bg-gray-100 text-gray-500 border-gray-200' };
@@ -262,7 +288,9 @@ function Section({ icon: Icon, title, count, children }) {
         <Icon className="w-4 h-4 text-gtc-gold" />{title}
         {count !== undefined && <span className="ml-auto text-xs text-gray-400">{count} 条</span>}
       </div>
-      <div className="p-4 text-sm">{children}</div>
+      <div className="p-4 text-sm">
+        <ErrorBoundary label={title}>{children}</ErrorBoundary>
+      </div>
     </div>
   );
 }
@@ -389,7 +417,7 @@ function DocsAndCheck({ shipmentId, documents, onChanged }) {
 
   return (
     <Section icon={FileSearch} title="单证与核查">
-      {caseErr && <p className="text-red-600 mb-3">{caseErr}</p>}
+      {caseErr && <p className="text-red-600 mb-3 break-all">{String(caseErr)}</p>}
 
       {/* 上传区 */}
       <div
@@ -420,7 +448,7 @@ function DocsAndCheck({ shipmentId, documents, onChanged }) {
                 {f.status === 'processing' && (
                   <p className="text-[11px] text-gray-400">{UPLOAD_STEPS[f.step] || '处理中'}…</p>
                 )}
-                {f.status === 'error' && <p className="text-[11px] text-red-500 truncate">{f.error}</p>}
+                {f.status === 'error' && <p className="text-[11px] text-red-500 break-all">{String(f.error || '处理失败')}</p>}
               </div>
               <select
                 value={f.docType}
@@ -459,7 +487,7 @@ function DocsAndCheck({ shipmentId, documents, onChanged }) {
         </button>
       </div>
 
-      {err && <p className="mt-3 text-xs text-red-600">{err}</p>}
+      {err && <p className="mt-3 text-xs text-red-600 break-all">{String(err)}</p>}
 
       {/* 已登记单证 */}
       <div className="mt-4">
@@ -722,6 +750,14 @@ function ShipmentTable({ items, tenantType, onOpen, onAction, busyId }) {
 // 页面
 // ══════════════════════════════════════════════════════════
 export default function ShipmentsPage() {
+  return (
+    <ErrorBoundary label="货件通道">
+      <ShipmentsPageInner />
+    </ErrorBoundary>
+  );
+}
+
+function ShipmentsPageInner() {
   const [ctx, setCtx] = useState(null);
   const [ctxError, setCtxError] = useState('');
   const [items, setItems] = useState([]);
@@ -858,7 +894,11 @@ export default function ShipmentsPage() {
       <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
         {loading && !items.length
           ? <div className="flex items-center gap-2 text-sm text-gray-500 py-8 justify-center"><Loader2 className="w-4 h-4 animate-spin" />加载中…</div>
-          : <ShipmentTable items={items} tenantType={tenantType} onOpen={setDrawerId} onAction={handleAction} busyId={busyId} />}
+          : (
+            <ErrorBoundary label="货件列表">
+              <ShipmentTable items={items} tenantType={tenantType} onOpen={setDrawerId} onAction={handleAction} busyId={busyId} />
+            </ErrorBoundary>
+          )}
       </div>
 
       <p className="text-xs text-gray-400">
@@ -876,13 +916,15 @@ export default function ShipmentsPage() {
         />
       )}
       {drawerId != null && (
-        <Drawer
-          shipmentId={drawerId}
-          refreshKey={drawerKey}
-          tenantType={tenantType}
-          onClose={() => setDrawerId(null)}
-          onChanged={async () => { setDrawerKey((k) => k + 1); await load(); }}
-        />
+        <ErrorBoundary label="货件详情">
+          <Drawer
+            shipmentId={drawerId}
+            refreshKey={drawerKey}
+            tenantType={tenantType}
+            onClose={() => setDrawerId(null)}
+            onChanged={async () => { setDrawerKey((k) => k + 1); await load(); }}
+          />
+        </ErrorBoundary>
       )}
     </div>
   );
