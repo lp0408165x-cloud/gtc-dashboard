@@ -7,7 +7,7 @@ import {
   ChevronDown, ChevronRight,
 } from 'lucide-react';
 import { shipmentsAPI } from '../services/shipmentsApi';
-import { filesAPI, toolsAPI, quickCheckAPI, subscriptionAPI } from '../services/api';
+import { filesAPI, toolsAPI } from '../services/api';
 import ErrorBoundary from '../components/ErrorBoundary';
 
 // ══════════════════════════════════════════════════════════
@@ -99,74 +99,6 @@ const CONCLUSION_CONFIG = {
   clarify: { cls: 'bg-amber-50 text-amber-800 border-amber-300',       text: '需澄清后放行' },
   blocked: { cls: 'bg-red-50 text-red-800 border-red-300',             text: '存在硬伤须修正' },
 };
-
-// 核查结果卡片的 headline / 修正指引。
-// 后端若返回 headline / action 字段则优先用后端的，这里只是兜底文案。
-const CONCLUSION_HEADLINE = {
-  pass:    '核心字段全部一致，未发现放行障碍',
-  clarify: '存在待澄清项，补充说明后方可放行',
-  blocked: '发现硬伤，放行前必须修正',
-};
-
-const CONCLUSION_ACTION = {
-  pass:    '可进入闸门判定。建议下载核查报告存档，作为本票货件的合规留痕。',
-  clarify: '按问题清单补齐字段或出具书面说明，修正后重跑核查确认。',
-  blocked: '按问题清单逐项修正单证并重跑核查；未修正前不要提交 Entry。',
-};
-
-// 「N 类问题」按字段归类：同一字段在多份单证之间的多处冲突算一类。
-// 后端若已返回 issues（字符串或 {title, detail, impact, count}）则直接用。
-function buildIssues(report) {
-  if (Array.isArray(report?.issues) && report.issues.length) {
-    return report.issues.map((x, i) => (
-      typeof x === 'string'
-        ? { rowKey: `s${i}`, title: x, detail: '', impact: '', count: 1 }
-        : {
-            rowKey: `s${i}`,
-            title: x.title || x.field_cn || x.rule || `问题 ${i + 1}`,
-            detail: x.detail || '',
-            impact: x.impact || '',
-            count: x.count || 1,
-          }
-    ));
-  }
-
-  const map = new Map();
-  for (const c of report?.inconsistencies || []) {
-    const title = c.field_cn || c.field_en || '未命名字段';
-    const cur = map.get(title);
-    if (cur) {
-      cur.count += 1;
-    } else {
-      map.set(title, {
-        rowKey: `f${map.size}`,
-        title,
-        detail: `${c.doc_a || '文件 A'} 与 ${c.doc_b || '文件 B'} 不一致`,
-        impact: c.impact || '',
-        count: 1,
-      });
-    }
-  }
-  (report?.date_chain?.issues || []).forEach((d, i) => {
-    map.set(`__date_${i}`, {
-      rowKey: `d${i}`,
-      title: d.rule || '日期链异常',
-      detail: d.detail || '',
-      impact: d.severity === 'critical' ? '时间倒挂，属硬伤' : '',
-      count: 1,
-    });
-  });
-  return Array.from(map.values());
-}
-
-// 订阅是否生效：free / 过期 / 已取消一律按未解锁处理
-const ACTIVE_SUB_STATUS = ['active', 'trial', 'trialing'];
-function isSubscriptionActive(sub) {
-  if (!sub) return false;
-  const plan = sub.plan || sub.plan_code;
-  if (!plan || plan === 'free') return false;
-  return ACTIVE_SUB_STATUS.includes(String(sub.status || '').toLowerCase());
-}
 
 // 单文件处理链路：与 QuickCheckPage 相同，末尾多一步登记到货件
 const UPLOAD_STEPS = ['上传', '预处理', '抽取字段', '登记'];
@@ -391,9 +323,9 @@ function KV({ k, v }) {
   );
 }
 
-// unlocked：订阅生效（或 gtc 运营），决定是否放出问题清单 / 修正指引 / 报告下载
-// isGtc：运营视图，在已解锁基础上再多一块折叠的比对明细
-function DocsAndCheck({ shipmentId, documents, onChanged, unlocked, isGtc }) {
+// 解锁与否完全以后端 customer_summary.unlocked 为准，前端不做订阅判定。
+// isGtc：运营视图，在已解锁基础上再多一块折叠的比对明细。
+function DocsAndCheck({ shipmentId, documents, onChanged, isGtc }) {
   const navigate = useNavigate();
   const [caseId, setCaseId] = useState(null);
   const [caseErr, setCaseErr] = useState('');
@@ -401,7 +333,7 @@ function DocsAndCheck({ shipmentId, documents, onChanged, unlocked, isGtc }) {
   const [registered, setRegistered] = useState([]);
   const [processing, setProcessing] = useState(false);
   const [running, setRunning] = useState(false);
-  const [report, setReport] = useState(null);
+  const [result, setResult] = useState(null);
   const [err, setErr] = useState('');
   const [exporting, setExporting] = useState(false);
   const [exportErr, setExportErr] = useState('');
@@ -477,29 +409,18 @@ function DocsAndCheck({ shipmentId, documents, onChanged, unlocked, isGtc }) {
     setProcessing(false);
   };
 
+  // 后端返回：{ tool_result_id, case_id, shipment_status, conclusion_code,
+  //             customer_summary, unlocked, report? }
+  // 未解锁时 customer_summary 只有 headline / issue_count / unlocked，且不带 report。
   const runCheck = async () => {
     setRunning(true);
     setErr('');
     try {
       const res = await shipmentsAPI.runCrossCheck(shipmentId);
-      // 运行接口不返回明细，明细从案件级报告接口取（同一张报告）
-      let full = null;
-      try {
-        full = await quickCheckAPI.getReport(res.case_id);
-      } catch {
-        full = null;
-      }
-      setReport({
-        conclusion_code: res.conclusion_code || full?.conclusion_code,
-        conclusion: full?.conclusion || res.report?.conclusion,
-        doc_count: full?.doc_count ?? res.report?.doc_count,
-        inconsistencies: full?.inconsistencies || [],
-        date_chain: full?.date_chain || res.report?.date_chain || null,
-        // 后端若已经算好三态文案就直接用，没有则由 buildIssues / 兜底文案生成
-        headline: full?.headline || res.report?.headline || null,
-        issues: full?.issues || res.report?.issues || null,
-        action: full?.action || res.report?.action || null,
-        detailLoaded: !!full,
+      setResult({
+        conclusion_code: res.conclusion_code,
+        summary: res.customer_summary || null,
+        report: res.report || null,
       });
       setExportErr('');
       onChanged?.();
@@ -533,7 +454,10 @@ function DocsAndCheck({ shipmentId, documents, onChanged, unlocked, isGtc }) {
 
   // 详情接口暂未返回 documents，回落到本次上传登记的
   const docList = Array.isArray(documents) && documents.length ? documents : registered;
-  const conclusion = report ? (CONCLUSION_CONFIG[report.conclusion_code] || null) : null;
+  const summary = result?.summary || null;
+  // 解锁状态只认后端；后端没给就按未解锁处理
+  const unlocked = summary?.unlocked === true;
+  const conclusion = result ? (CONCLUSION_CONFIG[result.conclusion_code] || null) : null;
 
   return (
     <Section icon={FileSearch} title="单证与核查">
@@ -628,142 +552,124 @@ function DocsAndCheck({ shipmentId, documents, onChanged, unlocked, isGtc }) {
         )}
       </div>
 
-      {/* 核查结果：未解锁 / 已解锁 / gtc 三态 */}
-      {report && (() => {
-        const issues = buildIssues(report);
-        const headline =
-          report.headline
-          || CONCLUSION_HEADLINE[report.conclusion_code]
-          || report.conclusion
-          || '核查完成';
-        const guidance =
-          report.action
-          || CONCLUSION_ACTION[report.conclusion_code]
-          || '请人工复核核查结果后再决定下一步。';
+      {/* 核查结果：未解锁 / 已解锁 / gtc 三态，字段全部来自后端 customer_summary */}
+      {summary && (
+        <div className="mt-4">
+          {/* headline：三态共用 */}
+          <div className={`px-4 py-3 rounded-xl border ${conclusion?.cls || 'bg-gray-50 text-gray-700 border-gray-200'}`}>
+            <p className="font-semibold text-sm">{summary.headline || '核查完成'}</p>
+            <p className="text-xs mt-0.5 opacity-80">
+              结论码 {result.conclusion_code || '—'}
+              {result.report?.doc_count != null && ` · 核对 ${result.report.doc_count} 份单证`}
+              {` · 发现 ${summary.issue_count ?? 0} 类问题`}
+            </p>
+          </div>
 
-        return (
-          <div className="mt-4">
-            {/* headline：三态共用 */}
-            <div className={`px-4 py-3 rounded-xl border ${conclusion?.cls || 'bg-gray-50 text-gray-700 border-gray-200'}`}>
-              <p className="font-semibold text-sm">{headline}</p>
-              <p className="text-xs mt-0.5 opacity-80">
-                结论码 {report.conclusion_code || '—'}
-                {report.doc_count != null && ` · 核对 ${report.doc_count} 份单证`}
-                {` · 发现 ${issues.length} 类问题`}
-              </p>
+          {!unlocked ? (
+            /* ① 未解锁：后端只放出 headline 与 issue_count */
+            <div className="mt-2 border border-gray-200 bg-gray-50 rounded-xl px-4 py-4 text-center">
+              <Lock className="w-5 h-5 text-gray-400 mx-auto mb-1.5" />
+              <p className="text-sm font-medium text-gtc-navy">发现 {summary.issue_count ?? 0} 类问题</p>
+              <p className="text-xs text-gray-500 mt-1">问题清单与逐项修正指引需开通订阅后查看。</p>
+              <button onClick={() => navigate('/subscription')} className={`${btnPrimary} mt-3`}>
+                <Lock className="w-3.5 h-3.5" />
+                解锁查看问题清单与修正指引
+              </button>
             </div>
-
-            {!unlocked ? (
-              /* ① 未解锁：只给结论与问题类数，清单与修正指引锁住 */
-              <div className="mt-2 border border-gray-200 bg-gray-50 rounded-xl px-4 py-4 text-center">
-                <Lock className="w-5 h-5 text-gray-400 mx-auto mb-1.5" />
-                <p className="text-sm font-medium text-gtc-navy">发现 {issues.length} 类问题</p>
-                <p className="text-xs text-gray-500 mt-1">问题清单与逐项修正指引需开通订阅后查看。</p>
-                <button onClick={() => navigate('/subscription')} className={`${btnPrimary} mt-3`}>
-                  <Lock className="w-3.5 h-3.5" />
-                  解锁查看问题清单与修正指引
-                </button>
+          ) : (
+            <>
+              {/* ② 已解锁：问题清单（后端 issues，每条已是成句的中文） */}
+              <div className="mt-2">
+                <p className="text-xs font-semibold text-gtc-navy mb-1.5">
+                  问题清单（{summary.issue_count ?? (summary.issues?.length || 0)}）
+                </p>
+                {!summary.issues?.length ? (
+                  <p className="text-xs text-gray-400">本次核查未发现不一致项。</p>
+                ) : (
+                  <ul className="border border-gray-200 rounded-xl divide-y divide-gray-100">
+                    {summary.issues.map((line, i) => (
+                      <li key={i} className="flex items-start gap-2 px-3 py-2">
+                        <span className="text-[11px] text-gray-400 mt-0.5 w-4 flex-shrink-0">{i + 1}</span>
+                        <p className="text-xs text-gtc-navy break-all flex-1">{line}</p>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
-            ) : (
-              <>
-                {/* ② 已解锁：问题清单 */}
-                <div className="mt-2">
-                  <p className="text-xs font-semibold text-gtc-navy mb-1.5">问题清单（{issues.length}）</p>
-                  {!issues.length ? (
-                    <p className="text-xs text-gray-400">本次核查未发现不一致项。</p>
-                  ) : (
-                    <ul className="border border-gray-200 rounded-xl divide-y divide-gray-100">
-                      {issues.map((it, i) => (
-                        <li key={it.rowKey} className="flex items-start gap-2 px-3 py-2">
-                          <span className="text-[11px] text-gray-400 mt-0.5 w-4 flex-shrink-0">{i + 1}</span>
-                          <div className="min-w-0 flex-1">
-                            <p className="text-xs font-medium text-gtc-navy break-all">
-                              {it.title}
-                              {it.count > 1 && <span className="font-normal text-gray-400"> · {it.count} 处</span>}
-                            </p>
-                            {it.detail && <p className="text-[11px] text-gray-500 mt-0.5 break-all">{it.detail}</p>}
-                            {it.impact && <p className="text-[11px] text-amber-700 mt-0.5 break-all">影响：{it.impact}</p>}
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
 
-                {/* ② 已解锁：修正指引 */}
+              {/* ② 已解锁：修正指引 */}
+              {summary.action && (
                 <div className="mt-2 border border-gtc-gold/40 bg-amber-50 rounded-xl px-3 py-2.5">
                   <p className="text-xs font-semibold text-gtc-navy mb-0.5">修正指引</p>
-                  <p className="text-xs text-gtc-navy/80 break-all">{guidance}</p>
+                  <p className="text-xs text-gtc-navy/80 break-all">{summary.action}</p>
                 </div>
+              )}
 
-                {/* ② 已解锁：下载报告 */}
-                <div className="mt-3">
-                  <button onClick={downloadReport} disabled={exporting} className={btnPrimary}>
-                    {exporting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
-                    下载核查报告（Word）
+              {/* ② 已解锁：下载报告 */}
+              <div className="mt-3">
+                <button onClick={downloadReport} disabled={exporting} className={btnPrimary}>
+                  {exporting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+                  下载核查报告（Word）
+                </button>
+                {exportErr && <p className="mt-2 text-xs text-red-600 break-all">{String(exportErr)}</p>}
+              </div>
+
+              {/* ③ gtc 运营：折叠的比对明细，读 report.inconsistencies */}
+              {isGtc && (
+                <div className="mt-3 border border-gray-200 rounded-xl overflow-hidden">
+                  <button
+                    onClick={() => setShowDetail((v) => !v)}
+                    className="w-full flex items-center gap-2 px-3 py-2 bg-gray-50 text-xs font-semibold text-gtc-navy hover:bg-gray-100 transition-colors"
+                  >
+                    {showDetail ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+                    比对明细
+                    <span className="ml-auto font-normal text-gray-400">
+                      {result.report?.inconsistencies?.length || 0} 条
+                    </span>
                   </button>
-                  {exportErr && <p className="mt-2 text-xs text-red-600 break-all">{String(exportErr)}</p>}
-                </div>
-
-                {/* ③ gtc 运营：在已解锁基础上多一块折叠的比对明细 */}
-                {isGtc && (
-                  <div className="mt-3 border border-gray-200 rounded-xl overflow-hidden">
-                    <button
-                      onClick={() => setShowDetail((v) => !v)}
-                      className="w-full flex items-center gap-2 px-3 py-2 bg-gray-50 text-xs font-semibold text-gtc-navy hover:bg-gray-100 transition-colors"
-                    >
-                      {showDetail ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
-                      比对明细
-                      <span className="ml-auto font-normal text-gray-400">{report.inconsistencies.length} 条</span>
-                    </button>
-                    {showDetail && (
-                      report.inconsistencies.length ? (
-                        <div className="overflow-x-auto">
-                          <table className="w-full text-xs">
-                            <thead>
-                              <tr className="text-left text-gray-500 border-b border-gray-200 bg-white">
-                                <th className="px-3 py-2 font-medium">字段</th>
-                                <th className="px-3 py-2 font-medium">文件 A</th>
-                                <th className="px-3 py-2 font-medium">文件 B</th>
+                  {showDetail && (
+                    result.report?.inconsistencies?.length ? (
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-xs">
+                          <thead>
+                            <tr className="text-left text-gray-500 border-b border-gray-200 bg-white">
+                              <th className="px-3 py-2 font-medium">字段</th>
+                              <th className="px-3 py-2 font-medium">文件 A</th>
+                              <th className="px-3 py-2 font-medium">文件 B</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {result.report.inconsistencies.map((f, i) => (
+                              <tr key={i} className="border-b border-gray-100 last:border-0 align-top">
+                                <td className="px-3 py-2 text-gtc-navy font-medium whitespace-nowrap">{f.field_cn}</td>
+                                <td className="px-3 py-2">
+                                  <p className="text-gray-400">{f.doc_a}</p>
+                                  <p className="text-red-600 break-all">{f.value_a}</p>
+                                </td>
+                                <td className="px-3 py-2">
+                                  <p className="text-gray-400">{f.doc_b}</p>
+                                  <p className="text-red-600 break-all">{f.value_b}</p>
+                                </td>
                               </tr>
-                            </thead>
-                            <tbody>
-                              {report.inconsistencies.map((f, i) => (
-                                <tr key={i} className="border-b border-gray-100 last:border-0 align-top">
-                                  <td className="px-3 py-2 text-gtc-navy font-medium whitespace-nowrap">{f.field_cn}</td>
-                                  <td className="px-3 py-2">
-                                    <p className="text-gray-400">{f.doc_a}</p>
-                                    <p className="text-red-600 break-all">{f.value_a}</p>
-                                  </td>
-                                  <td className="px-3 py-2">
-                                    <p className="text-gray-400">{f.doc_b}</p>
-                                    <p className="text-red-600 break-all">{f.value_b}</p>
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      ) : (
-                        <p className="px-3 py-3 text-xs text-gray-400">无不一致明细。</p>
-                      )
-                    )}
-                  </div>
-                )}
-              </>
-            )}
-
-            {!report.detailLoaded && (
-              <p className="mt-2 text-xs text-gray-400">明细报告读取失败，仅显示结论。</p>
-            )}
-          </div>
-        );
-      })()}
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <p className="px-3 py-3 text-xs text-gray-400">无不一致明细。</p>
+                    )
+                  )}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
     </Section>
   );
 }
 
-function Drawer({ shipmentId, onClose, refreshKey, tenantType, onChanged, unlocked, isGtc }) {
+function Drawer({ shipmentId, onClose, refreshKey, tenantType, onChanged, isGtc }) {
   const [detail, setDetail] = useState(null);
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -817,7 +723,6 @@ function Drawer({ shipmentId, onClose, refreshKey, tenantType, onChanged, unlock
                   shipmentId={shipmentId}
                   documents={detail.documents}
                   onChanged={onChanged}
-                  unlocked={unlocked}
                   isGtc={isGtc}
                 />
               )}
@@ -975,28 +880,15 @@ function ShipmentsPageInner() {
   const [showCreate, setShowCreate] = useState(false);
   const [busyId, setBusyId] = useState(null);
 
-  const [entitled, setEntitled] = useState(false);
-
   const tenantType = ctx?.tenant_type;
   const view = VIEW_CONFIG[tenantType] || VIEW_CONFIG.exporter;
   const isGtc = tenantType === 'gtc';
-  // 运营不受订阅限制；其余租户按订阅是否生效决定核查结果是否解锁
-  const crossCheckUnlocked = isGtc || entitled;
 
   // 1. 挂载先取上下文，决定视图
   useEffect(() => {
     shipmentsAPI.getContext()
       .then(setCtx)
       .catch((e) => { setCtxError(errText(e)); setLoading(false); });
-  }, []);
-
-  // 1b. 订阅状态：决定核查结果解锁与否；取不到一律按未解锁处理
-  useEffect(() => {
-    let alive = true;
-    subscriptionAPI.getCurrent()
-      .then((r) => { if (alive) setEntitled(isSubscriptionActive(r?.subscription || r)); })
-      .catch(() => { if (alive) setEntitled(false); });
-    return () => { alive = false; };
   }, []);
 
   // 2. 拉列表（gtc 可按状态筛选）
@@ -1140,7 +1032,6 @@ function ShipmentsPageInner() {
             shipmentId={drawerId}
             refreshKey={drawerKey}
             tenantType={tenantType}
-            unlocked={crossCheckUnlocked}
             isGtc={isGtc}
             onClose={() => setDrawerId(null)}
             onChanged={async () => { setDrawerKey((k) => k + 1); await load(); }}
