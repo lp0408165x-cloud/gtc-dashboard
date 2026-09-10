@@ -593,6 +593,15 @@ function DocsAndCheck({ shipmentId, documents, onChanged, isGtc }) {
                         <p className="text-xs text-gtc-navy break-all flex-1">{line}</p>
                       </li>
                     ))}
+                    {/* 后端 issues 截到 6 条，issue_count 是全量类别数：
+                        差额要说清楚，否则「问题清单（12）」只列 6 条会被当成漏项 */}
+                    {(summary.issue_count ?? 0) > summary.issues.length && (
+                      <li className="px-3 py-2 bg-gray-50">
+                        <p className="text-[11px] text-gray-500">
+                          另有 {summary.issue_count - summary.issues.length} 类问题，详见下载报告
+                        </p>
+                      </li>
+                    )}
                   </ul>
                 )}
               </div>
