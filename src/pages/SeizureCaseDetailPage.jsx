@@ -504,36 +504,12 @@ export default function SeizureCaseDetailPage() {
                   <Download className="w-4 h-4 text-gray-400 ml-auto" />
                 </button>
 
-                <button
-                  onClick={async () => {
-                    try {
-                      const res = await fetch(`${API_URL}/api/v1/seizure-cases/${id}/guide`, {
-                        method: 'POST',
-                        headers: { Authorization: `Bearer ${token}` },
-                      });
-                      if (res.ok) {
-                        const blob = await res.blob();
-                        const url = URL.createObjectURL(blob);
-                        const a = document.createElement('a');
-                        a.href = url;
-                        a.download = `GTC_Seizure_Guide_${id}.docx`;
-                        a.click();
-                      }
-                    } catch (e) {
-                      console.error(e);
-                    }
-                  }}
-                  className="w-full flex items-center gap-3 px-4 py-3 border border-gray-200 rounded-xl hover:border-red-300 hover:bg-red-50 transition-colors text-left"
-                >
-                  <div className="w-10 h-10 rounded-lg bg-green-50 flex items-center justify-center">
-                    <Shield className="w-5 h-5 text-green-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-800">客户文件准备指引</p>
-                    <p className="text-xs text-gray-500">告知客户需要准备哪些材料</p>
-                  </div>
-                  <Download className="w-4 h-4 text-gray-400 ml-auto" />
-                </button>
+                {/*
+                  2026-09-21 隐藏「客户文件准备指引」按钮。
+                  它打向 POST /api/v1/seizure-cases/{id}/guide，后端从来没有这个端点，
+                  点了必然 404，而原代码只 console.error，界面上毫无反应。
+                  决定不补后端；要恢复的话，先在 seizure_router.py 实现 /guide 再放开这段。
+                */}
               </div>
             </div>
           </div>
