@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Send, Plus, FileText, CheckCircle, Clock, AlertCircle, Loader2, ChevronDown, ChevronUp, X } from 'lucide-react';
 import { API_BASE } from '../config/line';
 
-const SUBMISSION_METHODS = ['ACE系统', '邮件', '快递/邮寄', '传真', '其他'];
+const SUBMISSION_CHANNELS = ['ACE系统', '邮件', '快递/邮寄', '传真', '其他'];
 const SUBMISSION_STATUSES = [
   { value: 'submitted', label: '已提交', color: 'bg-blue-100 text-blue-700' },
   { value: 'acknowledged', label: 'CBP已确认', color: 'bg-purple-100 text-purple-700' },
@@ -11,99 +11,104 @@ const SUBMISSION_STATUSES = [
   { value: 'closed', label: '已结案', color: 'bg-gray-100 text-gray-700' },
 ];
 
+const EMPTY_FORM = () => ({
+  submitted_at: new Date().toISOString().split('T')[0],
+  channel: 'ACE系统',
+  recipient: '',
+  summary: '',
+  files_submitted: '',
+  notes: '',
+  status: 'submitted',
+  cbp_reference: '',
+});
+
+const authHeaders = () => ({
+  'Content-Type': 'application/json',
+  Authorization: `Bearer ${localStorage.getItem('gtc_token')}`,
+});
+
+// 后端错误体是 { detail: ... }，detail 可能是字符串，也可能是校验错误数组
+const errText = async (res, fallback) => {
+  try {
+    const body = await res.json();
+    const d = body?.detail;
+    if (typeof d === 'string') return d;
+    if (Array.isArray(d)) return d.map((e) => e.msg || '').filter(Boolean).join('；') || fallback;
+  } catch {
+    /* 响应体不是 JSON */
+  }
+  return fallback;
+};
+
 const SubmissionLog = ({ caseId }) => {
   const [submissions, setSubmissions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [expandedId, setExpandedId] = useState(null);
-  const [form, setForm] = useState({
-    submitted_at: new Date().toISOString().split('T')[0],
-    method: 'ACE系统',
-    recipient: '',
-    subject: '',
-    files_submitted: '',
-    notes: '',
-    status: 'submitted',
-    cbp_reference: '',
-  });
+  const [error, setError] = useState('');
+  const [form, setForm] = useState(EMPTY_FORM);
 
   useEffect(() => { fetchSubmissions(); }, [caseId]);
 
   const fetchSubmissions = async () => {
     setLoading(true);
+    setError('');
     try {
       const res = await fetch(`${API_BASE}/api/v1/cases/${caseId}/submissions`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('gtc_token')}` },
+        headers: authHeaders(),
       });
-      if (res.ok) {
-        const data = await res.json();
-        setSubmissions(Array.isArray(data) ? data : []);
-      }
+      if (!res.ok) throw new Error(await errText(res, `加载失败（${res.status}）`));
+      const data = await res.json();
+      setSubmissions(Array.isArray(data) ? data : []);
     } catch (err) {
-      // 后端未实现时静默失败，使用本地状态
+      setSubmissions([]);
+      setError(err.message || '加载提交记录失败');
     } finally {
       setLoading(false);
     }
   };
 
   const handleSave = async () => {
-    if (!form.subject.trim()) { alert('请填写提交主题'); return; }
+    if (!form.summary.trim()) { setError('请填写提交主题'); return; }
     setSaving(true);
+    setError('');
     try {
       const res = await fetch(`${API_BASE}/api/v1/cases/${caseId}/submissions`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('gtc_token')}`,
-        },
+        headers: authHeaders(),
         body: JSON.stringify(form),
       });
-      if (res.ok) {
-        const newRecord = await res.json();
-        setSubmissions([newRecord, ...submissions]);
-      } else {
-        // 后端未实现，本地记录
-        const localRecord = {
-          id: Date.now(),
-          ...form,
-          created_at: new Date().toISOString(),
-          local: true,
-        };
-        setSubmissions([localRecord, ...submissions]);
-      }
+      if (!res.ok) throw new Error(await errText(res, `保存失败（${res.status}）`));
+      const newRecord = await res.json();
+      setSubmissions([newRecord, ...submissions]);
       setShowForm(false);
-      setForm({
-        submitted_at: new Date().toISOString().split('T')[0],
-        method: 'ACE系统',
-        recipient: '',
-        subject: '',
-        files_submitted: '',
-        notes: '',
-        status: 'submitted',
-        cbp_reference: '',
-      });
+      setForm(EMPTY_FORM());
     } catch (err) {
-      const localRecord = { id: Date.now(), ...form, created_at: new Date().toISOString(), local: true };
-      setSubmissions([localRecord, ...submissions]);
-      setShowForm(false);
+      // 不再伪造本地记录：存不进去就得让人知道
+      setError(err.message || '保存失败');
     } finally {
       setSaving(false);
     }
   };
 
   const updateStatus = async (subId, newStatus) => {
+    const prev = submissions;
+    setSubmissions(submissions.map(s => (s.id === subId ? { ...s, status: newStatus } : s)));
+    setError('');
     try {
-      await fetch(`${API_BASE}/api/v1/cases/${caseId}/submissions/${subId}`, {
+      const res = await fetch(`${API_BASE}/api/v1/cases/${caseId}/submissions/${subId}`, {
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('gtc_token')}`,
-        },
+        headers: authHeaders(),
         body: JSON.stringify({ status: newStatus }),
       });
-    } catch {}
-    setSubmissions(submissions.map(s => s.id === subId ? { ...s, status: newStatus } : s));
+      if (!res.ok) throw new Error(await errText(res, `状态更新失败（${res.status}）`));
+      const updated = await res.json();
+      setSubmissions((cur) => cur.map(s => (s.id === subId ? updated : s)));
+    } catch (err) {
+      setSubmissions(prev);   // 回滚，别让界面显示一个没存上的状态
+      setError(err.message || '状态更新失败');
+    }
   };
 
   const getStatusConfig = (status) =>
@@ -133,6 +138,17 @@ const SubmissionLog = ({ caseId }) => {
         </button>
       </div>
 
+      {/* 错误提示 */}
+      {error && (
+        <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
+          <span className="flex-1">{error}</span>
+          <button onClick={() => setError('')} className="text-red-400 hover:text-red-600">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+
       {/* 新增表单 */}
       {showForm && (
         <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 space-y-3">
@@ -148,13 +164,13 @@ const SubmissionLog = ({ caseId }) => {
             </div>
             <div>
               <label className="block text-xs text-gray-600 mb-1">提交方式</label>
-              <select className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" {...f('method')}>
-                {SUBMISSION_METHODS.map(m => <option key={m} value={m}>{m}</option>)}
+              <select className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" {...f('channel')}>
+                {SUBMISSION_CHANNELS.map(m => <option key={m} value={m}>{m}</option>)}
               </select>
             </div>
             <div>
               <label className="block text-xs text-gray-600 mb-1">提交主题 *</label>
-              <input className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="如 CF-28 Response – Entry NXU99948802" {...f('subject')} />
+              <input className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="如 CF-28 Response – Entry NXU99948802" {...f('summary')} />
             </div>
             <div>
               <label className="block text-xs text-gray-600 mb-1">收件方（CBP联系人）</label>
@@ -216,9 +232,9 @@ const SubmissionLog = ({ caseId }) => {
                   </div>
 
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium text-gray-800 text-sm truncate">{sub.subject}</p>
+                    <p className="font-medium text-gray-800 text-sm truncate">{sub.summary}</p>
                     <p className="text-xs text-gray-500">
-                      {sub.submitted_at} · {sub.method}
+                      {sub.submitted_at} · {sub.channel}
                       {sub.recipient && ` · ${sub.recipient}`}
                     </p>
                   </div>
@@ -250,7 +266,6 @@ const SubmissionLog = ({ caseId }) => {
                       </div>
                     )}
                     {sub.notes && <p><span className="text-gray-400">备注：</span>{sub.notes}</p>}
-                    {sub.local && <p className="text-xs text-amber-600">⚠️ 本地记录（后端API未就绪）</p>}
                   </div>
                 )}
               </div>
