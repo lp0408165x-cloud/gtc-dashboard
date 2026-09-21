@@ -55,15 +55,21 @@ export default function SettingsPage() {
 
   const handleProfileSubmit = async (e) => {
     e.preventDefault();
+
+    const fullName = profile.full_name.trim();
+    if (!fullName) {
+      showMessage('error', '姓名不能为空');
+      return;
+    }
+
     setLoading(true);
     try {
-      // 注意：需要后端支持 /auth/update-profile 端点
-      // 暂时显示成功消息
+      // 邮箱在界面上锁定，只提交姓名
+      const updated = await authAPI.updateProfile({ full_name: fullName });
+      setUser(updated);
+      localStorage.setItem('gtc_user', JSON.stringify(updated));
+      setProfile({ full_name: updated.full_name || '', email: updated.email || '' });
       showMessage('success', '个人信息已更新');
-      // 更新本地用户信息
-      const updatedUser = { ...user, full_name: profile.full_name };
-      setUser(updatedUser);
-      localStorage.setItem('gtc_user', JSON.stringify(updatedUser));
     } catch (error) {
       showMessage('error', '更新失败：' + (error.response?.data?.detail || error.message));
     } finally {
@@ -73,23 +79,28 @@ export default function SettingsPage() {
 
   const handlePasswordSubmit = async (e) => {
     e.preventDefault();
-    
+
+    if (!passwords.current) {
+      showMessage('error', '请输入当前密码');
+      return;
+    }
+
     if (passwords.new !== passwords.confirm) {
       showMessage('error', '两次输入的新密码不一致');
       return;
     }
-    
-    if (passwords.new.length < 6) {
-      showMessage('error', '新密码至少需要6个字符');
+
+    // 与后端 MIN_PASSWORD_LENGTH 保持一致
+    if (passwords.new.length < 8) {
+      showMessage('error', '新密码至少需要8个字符');
       return;
     }
 
     setLoading(true);
     try {
-      // 注意：需要后端支持 /auth/change-password 端点
-      // 暂时显示成功消息
-      showMessage('success', '密码修改成功');
+      await authAPI.changePassword(passwords.current, passwords.new);
       setPasswords({ current: '', new: '', confirm: '' });
+      showMessage('success', '密码修改成功');
     } catch (error) {
       showMessage('error', '修改失败：' + (error.response?.data?.detail || error.message));
     } finally {
@@ -242,7 +253,7 @@ export default function SettingsPage() {
                       value={passwords.new}
                       onChange={(e) => setPasswords({ ...passwords, new: e.target.value })}
                       className="w-full px-4 py-2.5 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gtc-gold focus:border-transparent"
-                      placeholder="请输入新密码（至少6位）"
+                      placeholder="请输入新密码（至少8位）"
                     />
                     <button
                       type="button"

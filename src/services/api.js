@@ -44,6 +44,18 @@ export const authAPI = {
     const response = await api.get('/auth/me');
     return response.data;
   },
+  // 只传要改的字段；邮箱当前在界面上锁定，实际只会传 full_name
+  updateProfile: async (payload) => {
+    const response = await api.put('/auth/profile', payload);
+    return response.data;
+  },
+  changePassword: async (currentPassword, newPassword) => {
+    const response = await api.post('/auth/change-password', {
+      current_password: currentPassword,
+      new_password: newPassword,
+    });
+    return response.data;
+  },
 };
 
 export const casesAPI = {

@@ -78,6 +78,7 @@ const login = async (email, password) => {
 
   const value = {
     user,
+    setUser,   // SettingsPage 改完个人信息后要就地刷新
     loading,
     error,
     login,
