@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Shield, Mail, Lock, Phone, MessageCircle, ArrowRight, AlertCircle } from 'lucide-react';
+import LineSwitcher from '../components/LineSwitcher';
 
 const LoginPage = () => {
   const [email, setEmail] = useState('');
@@ -180,6 +181,11 @@ const LoginPage = () => {
                 立即注册
               </Link>
             </div>
+          </div>
+
+          {/* 线路切换：中国客户可切到香港加速线路 */}
+          <div className="mt-6 flex justify-center">
+            <LineSwitcher variant="dark" />
           </div>
 
           {/* 移动端联系方式 + 版权 */}

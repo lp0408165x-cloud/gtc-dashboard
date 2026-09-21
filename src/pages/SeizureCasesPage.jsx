@@ -5,7 +5,7 @@ import {
   TrendingUp, Filter, Search, ChevronRight, Zap
 } from 'lucide-react';
 
-const API_URL = import.meta.env.VITE_API_URL || 'https://gtc-ai-platform.onrender.com';
+import { API_BASE as API_URL } from '../config/line';
 
 const STATUS_CONFIG = {
   active:     { label: '文件收集中',    bg: 'bg-amber-50',  text: 'text-amber-700',  border: 'border-amber-200' },

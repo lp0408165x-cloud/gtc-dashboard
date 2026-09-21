@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { authAPI } from '../services/api';
+import LineSwitcher from '../components/LineSwitcher';
 import {
   User,
   Building2,
@@ -10,7 +11,8 @@ import {
   Eye,
   EyeOff,
   CheckCircle,
-  AlertCircle
+  AlertCircle,
+  Globe
 } from 'lucide-react';
 
 export default function SettingsPage() {
@@ -98,7 +100,8 @@ export default function SettingsPage() {
   const tabs = [
     { id: 'profile', label: '个人信息', icon: User },
     { id: 'security', label: '安全设置', icon: Lock },
-    { id: 'company', label: '公司信息', icon: Building2 }
+    { id: 'company', label: '公司信息', icon: Building2 },
+    { id: 'network', label: '线路', icon: Globe }
   ];
 
   return (
@@ -329,6 +332,28 @@ export default function SettingsPage() {
 
               <p className="text-sm text-gray-400">
                 如需修改公司信息，请联系管理员
+              </p>
+            </div>
+          )}
+
+          {/* 线路 */}
+          {activeTab === 'network' && (
+            <div className="space-y-6">
+              <h2 className="text-lg font-semibold text-gtc-navy flex items-center gap-2">
+                <Globe className="w-5 h-5" />
+                线路
+              </h2>
+
+              <div className="bg-gray-50 rounded-lg p-6 space-y-4">
+                <LineSwitcher variant="light" />
+                <p className="text-sm text-gray-500">
+                  中国大陆访问较慢时可切到「中国加速」，请求经香港中转后回源。
+                  切换后页面会自动刷新。
+                </p>
+              </div>
+
+              <p className="text-sm text-gray-400">
+                该设置只存在当前浏览器，换设备或清除浏览器数据后需要重新选择。
               </p>
             </div>
           )}

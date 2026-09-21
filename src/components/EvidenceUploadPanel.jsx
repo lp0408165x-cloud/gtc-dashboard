@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { filesAPI } from '../services/api';
 import IntakeUploadPanel from './IntakeUploadPanel';
+import { API_BASE as API_URL } from '../config/line';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 

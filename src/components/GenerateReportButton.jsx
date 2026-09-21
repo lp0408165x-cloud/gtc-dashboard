@@ -20,7 +20,7 @@ import {
   X,
 } from 'lucide-react';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'https://gtc-ai-platform.onrender.com';
+import { API_BASE } from '../config/line';
 
 // ─── 辅助：状态颜色 ─────────────────────────────
 const STATUS_STYLES = {

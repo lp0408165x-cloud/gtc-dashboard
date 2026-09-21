@@ -8,6 +8,7 @@ import EvidenceUploadPanel from '../components/EvidenceUploadPanel';
 import WorkflowPanel from '../components/WorkflowPanel';
 import CaseInfoEditor from '../components/CaseInfoEditor';
 import SubmissionLog from '../components/SubmissionLog';
+import { API_BASE } from '../config/line';
 
 
 import {
@@ -140,7 +141,7 @@ const CaseDetailPage = () => {
     } catch (error) {
       try {
         const response = await fetch(
-          `${import.meta.env.VITE_API_URL || 'https://gtc-ai-platform.onrender.com'}/api/v1/users/`,
+          `${API_BASE}/api/v1/users/`,
           { headers: { Authorization: `Bearer ${localStorage.getItem('gtc_token')}` } }
         );
         if (response.ok) {

@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import axios from 'axios';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'https://api.gtc-ai-global.com';
+import { API_BASE } from '../config/line';
 
 // 安全字符串转换，防止对象被直接渲染
 const str = (val) => {

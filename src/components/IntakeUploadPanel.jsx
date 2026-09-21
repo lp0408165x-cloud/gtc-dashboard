@@ -4,7 +4,7 @@ import {
   ChevronRight, Sparkles, AlertTriangle, Eye, RotateCcw
 } from 'lucide-react';
 
-const API_URL = import.meta.env.VITE_API_URL || 'https://gtc-ai-platform.onrender.com';
+import { API_BASE as API_URL } from '../config/line';
 
 const SLOT_ICONS = { '1': '📋', '2': '📨', '3': '📦' };
 const URGENCY_COLOR = {

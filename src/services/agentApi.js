@@ -1,6 +1,5 @@
 import api from './api';
-
-const WS_BASE_URL = import.meta.env.VITE_API_URL?.replace('https://', 'wss://').replace('http://', 'ws://') || 'wss://gtc-ai-platform.onrender.com';
+import { WS_BASE } from '../config/line';
 
 export const agentAPI = {
   // HTTP 模式分析
@@ -16,7 +15,7 @@ export const agentAPI = {
   analyzeWithProgress: (caseId, callbacks = {}) => {
     const { onProgress, onComplete, onError, onStart } = callbacks;
     
-    const ws = new WebSocket(`${WS_BASE_URL}/api/v1/agent/ws/${caseId}`);
+    const ws = new WebSocket(`${WS_BASE}/api/v1/agent/ws/${caseId}`);
     
     ws.onopen = () => {
       console.log('Agent WebSocket connected');

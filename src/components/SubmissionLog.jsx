@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Send, Plus, FileText, CheckCircle, Clock, AlertCircle, Loader2, ChevronDown, ChevronUp, X } from 'lucide-react';
+import { API_BASE } from '../config/line';
 
 const SUBMISSION_METHODS = ['ACE系统', '邮件', '快递/邮寄', '传真', '其他'];
 const SUBMISSION_STATUSES = [
@@ -9,8 +10,6 @@ const SUBMISSION_STATUSES = [
   { value: 'responded', label: 'CBP已回复', color: 'bg-green-100 text-green-700' },
   { value: 'closed', label: '已结案', color: 'bg-gray-100 text-gray-700' },
 ];
-
-const API_BASE = import.meta.env.VITE_API_URL || 'https://gtc-ai-platform.onrender.com';
 
 const SubmissionLog = ({ caseId }) => {
   const [submissions, setSubmissions] = useState([]);
