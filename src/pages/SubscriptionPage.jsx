@@ -188,17 +188,7 @@ const SubscriptionPage = () => {
             <Info className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
             <div>
               <p className="text-amber-800 font-medium mb-2">待付款 — 请完成对公转账</p>
-              <div className="text-amber-700 text-sm space-y-1">
-                <p>您的 <strong>{PLAN_CONFIG[currentPlan]?.label}</strong> 订阅已创建，请按以下信息完成付款：</p>
-                <div className="bg-white/60 rounded-lg p-3 mt-2 space-y-1 text-xs font-mono">
-                  <p>开户行：待配置</p>
-                  <p>账　号：待配置</p>
-                  <p>户　名：GTC-AI GLOBAL</p>
-                  <p>金　额：¥{toYuan(plans.find(p => p.plan === currentPlan)?.price_monthly || 0)}/月</p>
-                  <p>备　注：请注明公司名称和订阅计划</p>
-                </div>
-                <p className="mt-2 text-xs text-amber-600">付款后请联系客服确认，我们会在 1 个工作日内激活您的订阅。</p>
-              </div>
+              <p className="text-amber-700 text-sm">如需付费，请联系 <a href="mailto:info@gtc-ai-global.com" className="font-medium underline">info@gtc-ai-global.com</a> 获取收款信息</p>
             </div>
           </div>
         </div>
