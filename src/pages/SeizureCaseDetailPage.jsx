@@ -7,6 +7,10 @@ import {
 } from 'lucide-react';
 
 import { API_BASE as API_URL } from '../config/line';
+import { useAuth } from '../context/AuthContext';
+import { isInternal } from '../utils/roles';
+
+const PENDING_MSG = '分析由 GTC 专家发起，完成后在此显示';
 
 const TABS = [
   { id: 'analysis', label: '分析', icon: Sparkles },
@@ -19,6 +23,8 @@ const TABS = [
 export default function SeizureCaseDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const internal = isInternal(user);
   const [activeTab, setActiveTab] = useState('analysis');
   const [caseData, setCaseData] = useState(null);
   const [analysis, setAnalysis] = useState(null);
@@ -74,7 +80,8 @@ export default function SeizureCaseDetailPage() {
   };
 
   useEffect(() => {
-    if (caseData && !analysis && !analyzing) {
+    // 客户打开页面不触发分析；分析由 GTC 专家发起
+    if (internal && caseData && !analysis && !analyzing) {
       runAnalysis();
     }
   }, [caseData]);
@@ -124,14 +131,16 @@ export default function SeizureCaseDetailPage() {
                 {days > 0 ? `${days} 天截止` : '已过期'}
               </div>
             )}
-            <button
-              onClick={runAnalysis}
-              disabled={analyzing}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-red-500 text-white rounded-lg hover:bg-red-600 disabled:opacity-60"
-            >
-              {analyzing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
-              重新分析
-            </button>
+            {internal && (
+              <button
+                onClick={runAnalysis}
+                disabled={analyzing}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-red-500 text-white rounded-lg hover:bg-red-600 disabled:opacity-60"
+              >
+                {analyzing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+                重新分析
+              </button>
+            )}
           </div>
         </div>
         {/* Tabs */}
@@ -165,11 +174,17 @@ export default function SeizureCaseDetailPage() {
             ) : !analysis ? (
               <div className="bg-white rounded-xl border border-gray-200 p-12 flex flex-col items-center">
                 <Sparkles className="w-10 h-10 text-gray-300 mb-3" />
-                <p className="text-gray-500 font-medium">暂无分析结果</p>
-                {analysisError && <p className="mt-2 text-sm text-red-600">{analysisError}</p>}
-                <button onClick={runAnalysis} className="mt-3 px-4 py-2 bg-red-500 text-white rounded-lg text-sm">
-                  开始分析
-                </button>
+                {internal ? (
+                  <>
+                    <p className="text-gray-500 font-medium">暂无分析结果</p>
+                    {analysisError && <p className="mt-2 text-sm text-red-600">{analysisError}</p>}
+                    <button onClick={runAnalysis} className="mt-3 px-4 py-2 bg-red-500 text-white rounded-lg text-sm">
+                      开始分析
+                    </button>
+                  </>
+                ) : (
+                  <p className="text-gray-500 font-medium">{PENDING_MSG}</p>
+                )}
               </div>
             ) : (
               <>
@@ -253,7 +268,7 @@ export default function SeizureCaseDetailPage() {
           <div className="space-y-4">
             {!analysis?.docs ? (
               <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-400 text-sm">
-                请先完成分析以生成文件清单
+                {internal ? '请先完成分析以生成文件清单' : PENDING_MSG}
               </div>
             ) : (
               <>
@@ -320,7 +335,7 @@ export default function SeizureCaseDetailPage() {
           <div className="space-y-4">
             {!analysis?.strategies ? (
               <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-400 text-sm">
-                请先完成分析以生成申诉策略
+                {internal ? '请先完成分析以生成申诉策略' : PENDING_MSG}
               </div>
             ) : (
               <>
@@ -386,7 +401,7 @@ export default function SeizureCaseDetailPage() {
           <div className="space-y-4">
             {!analysis?.key_questions ? (
               <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-400 text-sm">
-                请先完成分析以生成关键问题
+                {internal ? '请先完成分析以生成关键问题' : PENDING_MSG}
               </div>
             ) : (
               <>
