@@ -2,7 +2,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import DashboardLayout from './components/DashboardLayout';
 import LoginPage from './pages/LoginPage';
-import RegisterPage from './pages/RegisterPage';
+
 import DashboardPage from './pages/DashboardPage';
 import CasesListPage from './pages/CasesListPage';
 import NewCasePage from './pages/NewCasePage';
@@ -36,7 +36,7 @@ function App() {
       <Routes>
         {/* Public Routes */}
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/register" element={<RegisterPage />} />
+        <Route path="/register" element={<Navigate to="/login" replace />} />  {/* 账号由 GTC 开通，不开放自助注册 */}
         <Route path="/accept-invite" element={<AcceptInvitePage />} />
 
         {/* Protected Routes */}
