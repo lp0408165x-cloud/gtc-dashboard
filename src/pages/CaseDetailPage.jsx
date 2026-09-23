@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { casesAPI, filesAPI, aiAPI, toolsAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { isInternal } from '../utils/roles';
 import GenerateReportButton from '../components/GenerateReportButton';
 import AgentAnalyzeButton from '../components/AgentAnalyzeButton';
 import EvidenceUploadPanel from '../components/EvidenceUploadPanel';
@@ -1304,8 +1305,10 @@ const CaseDetailPage = () => {
                   }}
                 />
               </div>
-              {/* CBP 合规报告生成 */}
-              <div className="p-4 bg-gradient-to-r from-[#1B3A6B]/5 to-[#C59736]/10 rounded-xl border border-[#1B3A6B]/20">
+              {/* CBP 合规报告生成：仅内部角色可见 */}
+              {isInternal(user) && (
+                <>
+                <div className="p-4 bg-gradient-to-r from-[#1B3A6B]/5 to-[#C59736]/10 rounded-xl border border-[#1B3A6B]/20">
                 <div className="flex items-start justify-between mb-3">
                   <div>
                     <h3 className="text-lg font-semibold text-gray-800">生成 CBP 合规回复报告</h3>
@@ -1322,19 +1325,23 @@ const CaseDetailPage = () => {
                 </div>
                 <GenerateReportButton caseId={parseInt(id)} caseData={caseData} />
               </div>
+                </>
+              )}
               {renderSavedRiskAnalysis()}
               {renderSavedPetition()}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className={`grid grid-cols-1 ${isInternal(user) ? 'md:grid-cols-3' : 'md:grid-cols-2'} gap-4`}>
                 <button onClick={handleAnalyze} disabled={analyzing}
                   className="bg-blue-500 text-white p-4 rounded-xl flex items-center justify-center gap-2 hover:bg-blue-600 disabled:opacity-50">
                   {analyzing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Brain className="w-5 h-5" />}
                   {caseData?.risk_score ? '重新分析风险' : '分析师风险分析'}
                 </button>
-                <button onClick={handleGeneratePetition} disabled={generating}
-                  className="bg-purple-500 text-white p-4 rounded-xl flex items-center justify-center gap-2 hover:bg-purple-600 disabled:opacity-50">
-                  {generating ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
-                  {caseData?.petition_draft ? '重新生成申诉书' : '专业生成申诉书'}
-                </button>
+                {isInternal(user) && (
+                  <button onClick={handleGeneratePetition} disabled={generating}
+                    className="bg-purple-500 text-white p-4 rounded-xl flex items-center justify-center gap-2 hover:bg-purple-600 disabled:opacity-50">
+                    {generating ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
+                    {caseData?.petition_draft ? '重新生成申诉书' : '专业生成申诉书'}
+                  </button>
+                )}
                 <button onClick={handleRiskScan} disabled={scanning}
                   className="bg-red-500 text-white p-4 rounded-xl flex items-center justify-center gap-2 hover:bg-red-600 disabled:opacity-50">
                   {scanning ? <Loader2 className="w-5 h-5 animate-spin" /> : <Search className="w-5 h-5" />}
