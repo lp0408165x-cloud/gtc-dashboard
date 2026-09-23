@@ -7,7 +7,6 @@ import {
 } from 'lucide-react';
 
 import { API_BASE as API_URL } from '../config/line';
-const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
 
 const TABS = [
   { id: 'analysis', label: '分析', icon: Sparkles },
@@ -17,38 +16,6 @@ const TABS = [
   { id: 'export', label: '报告导出', icon: Download },
 ];
 
-function buildPrompt(c) {
-  return `你是 GTC-AI Global 的美国海关合规专家，专注 CBP Seizure & Forfeiture 案件。
-
-案件信息：
-${JSON.stringify(c, null, 2)}
-
-根据以上信息，生成 JSON 分析（只输出 JSON，不要输出其他文字）：
-
-{
-  "risk_level": "高|中|低",
-  "risk_score": 1-10,
-  "win_probability": "如 50-70%",
-  "days_remaining": number,
-  "summary": "3-4句案情摘要",
-  "root_causes": ["原因1", "原因2"],
-  "favorable_factors": ["有利因素1"],
-  "unfavorable_factors": ["不利因素1"],
-  "docs": [
-    {"group": "A", "id": "A-1", "name": "文件名", "desc": "说明", "priority": "立即|重要|补充"}
-  ],
-  "strategies": [
-    {"name": "Petition", "name_cn": "申诉书", "desc": "说明", "timeline": "周期", "success_rate": "胜算", "recommended": true}
-  ],
-  "timeline_plan": [
-    {"day": "Day 1-3", "task": "任务", "status": "urgent|active|pending"}
-  ],
-  "key_questions": [
-    {"num": 1, "question": "问题", "why": "重要性说明"}
-  ]
-}`;
-}
-
 export default function SeizureCaseDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -57,6 +24,7 @@ export default function SeizureCaseDetailPage() {
   const [analysis, setAnalysis] = useState(null);
   const [loading, setLoading] = useState(true);
   const [analyzing, setAnalyzing] = useState(false);
+  const [analysisError, setAnalysisError] = useState('');
   const [checklist, setChecklist] = useState({});
   const [answeredQ, setAnsweredQ] = useState({});
 
@@ -70,8 +38,10 @@ export default function SeizureCaseDetailPage() {
       if (res.ok) {
         const data = await res.json();
         setCaseData(data.case);
-        if (data.analysis) {
-          setAnalysis(data.analysis);
+        const saved = data.analysis?.result_json;
+        if (saved) {
+          // 库里存的是整行 { result_json, analyzed_at, ... }，界面要的是 result_json 本身
+          setAnalysis(typeof saved === 'string' ? JSON.parse(saved) : saved);
         }
       }
     } catch (e) {
@@ -86,29 +56,18 @@ export default function SeizureCaseDetailPage() {
   const runAnalysis = async () => {
     if (!caseData) return;
     setAnalyzing(true);
+    setAnalysisError('');
     try {
-      const response = await fetch(ANTHROPIC_API_URL, {
+      // 由后端持有 ANTHROPIC_API_KEY 调用并入库，浏览器不再直连 api.anthropic.com
+      const res = await fetch(`${API_URL}/api/v1/seizure-cases/${id}/analyze`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 3000,
-          messages: [{ role: 'user', content: buildPrompt(caseData) }],
-        }),
+        headers: { Authorization: `Bearer ${token}` },
       });
-      const data = await response.json();
-      const raw = data.content?.[0]?.text || '';
-      const clean = raw.replace(/```json|```/g, '').trim();
-      const result = JSON.parse(clean);
-      setAnalysis(result);
-      // Save to backend
-      await fetch(`${API_URL}/api/v1/seizure-cases/${id}/analysis`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ result_json: result }),
-      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(typeof data.detail === 'string' ? data.detail : `分析失败（${res.status}）`);
+      setAnalysis(data.analysis);
     } catch (e) {
-      console.error('Analysis failed:', e);
+      setAnalysisError(e.message || '分析失败，请稍后重试');
     } finally {
       setAnalyzing(false);
     }
@@ -207,6 +166,7 @@ export default function SeizureCaseDetailPage() {
               <div className="bg-white rounded-xl border border-gray-200 p-12 flex flex-col items-center">
                 <Sparkles className="w-10 h-10 text-gray-300 mb-3" />
                 <p className="text-gray-500 font-medium">暂无分析结果</p>
+                {analysisError && <p className="mt-2 text-sm text-red-600">{analysisError}</p>}
                 <button onClick={runAnalysis} className="mt-3 px-4 py-2 bg-red-500 text-white rounded-lg text-sm">
                   开始分析
                 </button>
