@@ -53,7 +53,7 @@ export default function ExamPage() {
             <span className="text-slate-600 text-lg"> / {result.total_questions}</span>
           </p>
           <p className="text-slate-500 text-sm">正确率 {pct}%（及格线 80%）</p>
-          {result.passed && <p className="text-amber-400/80 mt-4 text-sm">证书已自动生成</p>}
+          {result.passed && <p className="text-amber-400/80 mt-4 text-sm">证书已签发</p>}
           <div className="flex gap-3 justify-center mt-8">
             <button onClick={() => navigate(`/training/courses/${courseId}`)} className="px-6 py-2.5 bg-slate-800 text-white rounded-xl text-sm hover:bg-slate-700 transition">返回课程</button>
             {result.passed ? (

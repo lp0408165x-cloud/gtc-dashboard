@@ -69,7 +69,7 @@ const AIChatWidget = () => {
   const [messages, setMessages] = useState([
     {
       role: 'assistant',
-      content: '您好！我是 GTC-AI 智能客服。我可以帮您解答合规问题、平台使用问题，或协助您了解我们的服务。请问有什么可以帮您的？',
+      content: '您好！这里是 GTC 在线咨询。我可以帮您解答合规问题、平台使用问题，或协助您了解我们的服务。请问有什么可以帮您的？',
     },
   ]);
   const [input, setInput] = useState('');
@@ -145,7 +145,7 @@ const AIChatWidget = () => {
                 <Bot className="w-5 h-5 text-gtc-gold" />
               </div>
               <div>
-                <p className="text-white text-sm font-medium">GTC-AI 智能客服</p>
+                <p className="text-white text-sm font-medium">在线咨询</p>
                 <p className="text-green-400 text-xs flex items-center gap-1">
                   <span className="w-1.5 h-1.5 bg-green-400 rounded-full inline-block" /> 在线
                 </p>

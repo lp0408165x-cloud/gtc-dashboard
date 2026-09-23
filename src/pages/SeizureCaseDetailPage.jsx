@@ -10,7 +10,7 @@ import { API_BASE as API_URL } from '../config/line';
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
 
 const TABS = [
-  { id: 'analysis', label: 'AI 分析', icon: Sparkles },
+  { id: 'analysis', label: '分析', icon: Sparkles },
   { id: 'docs', label: '文件清单', icon: FileText },
   { id: 'strategy', label: '申诉策略', icon: Shield },
   { id: 'questions', label: '关键问题', icon: MessageSquare },
@@ -201,8 +201,7 @@ export default function SeizureCaseDetailPage() {
             {analyzing ? (
               <div className="bg-white rounded-xl border border-gray-200 p-12 flex flex-col items-center">
                 <Loader2 className="w-8 h-8 animate-spin text-red-500 mb-3" />
-                <p className="text-gray-600 font-medium">AI 正在分析案件...</p>
-                <p className="text-gray-400 text-sm mt-1">通常需要 20-40 秒</p>
+                <p className="text-gray-600 font-medium">正在分析案件...</p>
               </div>
             ) : !analysis ? (
               <div className="bg-white rounded-xl border border-gray-200 p-12 flex flex-col items-center">
@@ -294,7 +293,7 @@ export default function SeizureCaseDetailPage() {
           <div className="space-y-4">
             {!analysis?.docs ? (
               <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-400 text-sm">
-                请先完成 AI 分析以生成文件清单
+                请先完成分析以生成文件清单
               </div>
             ) : (
               <>
@@ -361,7 +360,7 @@ export default function SeizureCaseDetailPage() {
           <div className="space-y-4">
             {!analysis?.strategies ? (
               <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-400 text-sm">
-                请先完成 AI 分析以生成申诉策略
+                请先完成分析以生成申诉策略
               </div>
             ) : (
               <>
@@ -427,7 +426,7 @@ export default function SeizureCaseDetailPage() {
           <div className="space-y-4">
             {!analysis?.key_questions ? (
               <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-400 text-sm">
-                请先完成 AI 分析以生成关键问题
+                请先完成分析以生成关键问题
               </div>
             ) : (
               <>
@@ -499,7 +498,7 @@ export default function SeizureCaseDetailPage() {
                   </div>
                   <div>
                     <p className="text-sm font-medium text-gray-800">合规分析报告（Word）</p>
-                    <p className="text-xs text-gray-500">包含 AI 分析、文件清单、申诉策略</p>
+                    <p className="text-xs text-gray-500">包含分析、文件清单、申诉策略</p>
                   </div>
                   <Download className="w-4 h-4 text-gray-400 ml-auto" />
                 </button>

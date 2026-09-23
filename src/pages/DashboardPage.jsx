@@ -257,7 +257,7 @@ const DashboardPage = () => {
                   </li>
                   <li className="flex items-start gap-2">
                     <CheckCircle className="w-4 h-4 text-green-500 mt-0.5" />
-                    <span>专业申诉书快速生成</span>
+                    <span>申诉书起草</span>
                   </li>
                 </ul>
               </div>

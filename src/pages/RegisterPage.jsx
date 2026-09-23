@@ -116,7 +116,7 @@ const RegisterPage = () => {
           <div className="space-y-4">
             <div className="flex items-center gap-3 text-gray-300">
               <CheckCircle className="w-5 h-5 text-gtc-gold" />
-              <span>快速文档扫描与分类</span>
+              <span>文档扫描与分类</span>
             </div>
             <div className="flex items-center gap-3 text-gray-300">
               <CheckCircle className="w-5 h-5 text-gtc-gold" />

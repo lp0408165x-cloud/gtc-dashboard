@@ -128,7 +128,7 @@ export default function NewSeizureCasePage() {
               </div>
               <h1 className="text-xl font-bold text-gray-900">新建罚没应对案件</h1>
             </div>
-            <p className="text-sm text-gray-500 mt-0.5 ml-9">填写案件基本信息，提交后 AI 自动生成分析报告</p>
+            <p className="text-sm text-gray-500 mt-0.5 ml-9">填写案件基本信息，提交后出具分析报告</p>
           </div>
         </div>
         <button
@@ -265,7 +265,7 @@ export default function NewSeizureCasePage() {
             <ul className="text-xs text-red-700 space-y-1.5">
               <li>• CBP Seizure 通知后 <strong>30天内</strong> 必须回应</li>
               <li>• FP&amp;F 案件可申请 Petition 减轻处罚</li>
-              <li>• 提交后 AI 自动生成分析，约需 30 秒</li>
+              <li>• 提交后进入案件分析</li>
               <li>• 货款支付凭证是关键证据，尽早收集</li>
             </ul>
           </div>

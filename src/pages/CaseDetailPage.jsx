@@ -659,7 +659,7 @@ const CaseDetailPage = () => {
                 <div className="bg-gradient-to-r from-blue-500 to-purple-500 text-white p-3 rounded-t-lg">
                   <h4 className="font-medium flex items-center gap-2">
                     <MessageSquare className="w-4 h-4" />
-                    AI 编辑助手
+                    编辑助手
                   </h4>
                   <p className="text-xs opacity-90 mt-1">基于案件上下文提供修改建议</p>
                 </div>
@@ -749,7 +749,7 @@ const CaseDetailPage = () => {
                   <p className="text-gray-700 whitespace-pre-wrap">{caseData.risk_analysis.substring(0, 300)}{caseData.risk_analysis.length > 300 ? '...' : ''}</p>
                 </div>
               )}
-              <p className="text-gray-400 text-xs">点击"接管编辑"可修改以上AI生成内容</p>
+              <p className="text-gray-400 text-xs">点击"接管编辑"可修改以上内容</p>
             </div>
           )}
         </div>

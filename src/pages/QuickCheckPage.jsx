@@ -229,7 +229,7 @@ const QuickCheckPage = () => {
     <div className="max-w-6xl mx-auto px-6 py-8">
       <div className="flex items-center gap-3 mb-2">
         <FileSearch className="w-8 h-8 text-gtc-gold" />
-        <h1 className="text-2xl font-display font-bold text-gtc-navy">单证智能核查</h1>
+        <h1 className="text-2xl font-display font-bold text-gtc-navy">单证核查</h1>
         <span className="text-[10px] px-2 py-0.5 bg-red-500 text-white rounded-full font-semibold">NEW</span>
       </div>
       <p className="text-gray-500 mb-8">

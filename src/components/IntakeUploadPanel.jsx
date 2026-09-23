@@ -193,7 +193,7 @@ export default function IntakeUploadPanel({ caseId, onAnalysisComplete }) {
             {analyzing ? (
               <>
                 <Loader2 className="w-5 h-5 animate-spin" />
-                AI 正在分析案件，请稍候...
+                正在分析案件，请稍候...
               </>
             ) : (
               <>
@@ -205,7 +205,7 @@ export default function IntakeUploadPanel({ caseId, onAnalysisComplete }) {
         )}
         {canAnalyze && !analyzing && (
           <p className="text-xs text-center text-gray-400 mt-2">
-            分析完成后将自动生成您专属的文件补交清单
+            分析完成后将列出您需要补交的文件清单
           </p>
         )}
       </div>

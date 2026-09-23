@@ -343,7 +343,7 @@ const PlansTab = ({ plans, currentPlan, currentSub, subStatus, billingPeriod, se
 
               <ul className="space-y-3 mb-6">
                 <FeatureItem icon={FileText} label={`每月 ${plan.max_cases_monthly === -1 ? '无限' : plan.max_cases_monthly} 个案件`} />
-                <FeatureItem icon={Brain} label={`每月 ${plan.max_ai_analyses_monthly === -1 ? '无限' : plan.max_ai_analyses_monthly} 次 AI 分析`} />
+                <FeatureItem icon={Brain} label={`每月 ${plan.max_ai_analyses_monthly === -1 ? '无限' : plan.max_ai_analyses_monthly} 次分析`} />
                 <FeatureItem icon={HardDrive} label={formatStorage(plan.max_storage_mb)} />
                 <FeatureItem icon={Users} label={`${plan.max_users === -1 ? '无限' : plan.max_users} 个用户`} />
                 {plan.features?.petition_gen && <FeatureItem icon={Check} label="申诉书生成" highlight />}
@@ -413,7 +413,7 @@ const FeatureItem = ({ icon: Icon, label, highlight }) => (
 const UsageTab = ({ usage, currentPlan }) => {
   const usageItems = usage ? [
     { label: '本月案件数', used: usage.cases_used || 0, limit: usage.cases_limit || 0, icon: FileText },
-    { label: 'AI 分析次数', used: usage.ai_used || 0, limit: usage.ai_limit || 0, icon: Brain },
+    { label: '分析次数', used: usage.ai_used || 0, limit: usage.ai_limit || 0, icon: Brain },
     { label: '存储空间 (MB)', used: usage.storage_used_mb || 0, limit: usage.storage_limit_mb || 0, icon: HardDrive },
     { label: '团队成员', used: usage.users_count || 1, limit: usage.users_limit || 1, icon: Users },
   ] : [];

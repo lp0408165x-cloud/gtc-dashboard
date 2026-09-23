@@ -49,17 +49,13 @@ const LoginPage = () => {
           
           <p className="text-xl text-gray-300 mb-8 max-w-md">
             资深专家合规团队，为您的供应链保驾护航。
-            快速响应CBP查扣，专业申诉文书生成。
+            应对 CBP 查扣，起草专业申诉文书。
           </p>
           
           <div className="flex gap-6">
             <div className="text-center">
               <div className="text-3xl font-bold text-gtc-gold">98%</div>
               <div className="text-sm text-gray-400">申诉成功率</div>
-            </div>
-            <div className="text-center">
-              <div className="text-3xl font-bold text-gtc-gold">24h</div>
-              <div className="text-sm text-gray-400">快速响应</div>
             </div>
             <div className="text-center">
               <div className="text-3xl font-bold text-gtc-gold">500+</div>

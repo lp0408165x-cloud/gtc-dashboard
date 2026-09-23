@@ -315,7 +315,7 @@ const NewCasePage = () => {
             </div>
 
             <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 text-sm text-blue-700">
-              创建后可在案件工作区继续填写：产品信息、供应商信息、上传文件、AI 分析等。
+              创建后可在案件工作区继续填写：产品信息、供应商信息、上传文件、案件分析等。
             </div>
           </div>
         )}

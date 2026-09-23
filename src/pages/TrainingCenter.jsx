@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   BookOpen, Clock, Users, Award, ChevronRight,
-  Search, Play, CheckCircle, BarChart3, Star, Layers, Shield, Zap
+  Search, Play, CheckCircle, BarChart3, Star, Layers, Shield
 } from 'lucide-react';
 import { trainingAPI } from '../services/api';
 
@@ -11,7 +11,6 @@ const categoryMap = {
   uflpa: { label: 'UFLPA', icon: Shield },
   cbp: { label: 'CBP', icon: Users },
   audit: { label: '审计', icon: BarChart3 },
-  ai: { label: 'AI', icon: Zap },
 };
 
 const difficultyConfig = {
