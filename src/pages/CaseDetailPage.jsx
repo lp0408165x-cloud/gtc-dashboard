@@ -1120,13 +1120,15 @@ const CaseDetailPage = () => {
             <StatusIcon className={`w-5 h-5 ${statusConfig.color}`} />
             <span className={`font-medium ${statusConfig.color}`}>{statusConfig.label}</span>
           </div>
-          <button
-            onClick={() => setShowDeleteConfirm(true)}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-colors text-sm"
-          >
-            <Trash2 className="w-4 h-4" />
-            删除案件
-          </button>
+          {isInternal(user) && (
+            <button
+              onClick={() => setShowDeleteConfirm(true)}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-colors text-sm"
+            >
+              <Trash2 className="w-4 h-4" />
+              删除案件
+            </button>
+          )}
         </div>
       </div>
 
@@ -1389,7 +1391,7 @@ const CaseDetailPage = () => {
           )}
         </div>
      </div>
-    {showDeleteConfirm && (
+    {showDeleteConfirm && isInternal(user) && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl p-6 max-w-md w-full mx-4 shadow-xl">
             <h3 className="text-lg font-bold text-gray-900 mb-2">确认删除</h3>
