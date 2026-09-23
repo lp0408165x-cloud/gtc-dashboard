@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Shield, Mail, Lock, Phone, MessageCircle, ArrowRight, AlertCircle } from 'lucide-react';
 import LineSwitcher from '../components/LineSwitcher';
@@ -144,12 +144,11 @@ const LoginPage = () => {
                   />
                   <span className="text-sm text-gray-600">记住我</span>
                 </label>
-                <Link
-                  to="/forgot-password"
-                  className="text-sm text-gtc-accent hover:underline"
-                >
+                <a
+                  href="mailto:info@gtc-ai-global.com"
+                  className="text-sm text-gtc-accent hover:underline">
                   忘记密码？
-                </Link>
+                </a>
               </div>
 
               <button
@@ -169,13 +168,10 @@ const LoginPage = () => {
             </form>
 
             <div className="mt-8 text-center">
-              <span className="text-gray-500">还没有账户？</span>{' '}
-              <Link
-                to="/register"
-                className="text-gtc-accent font-medium hover:underline"
-              >
-                立即注册
-              </Link>
+              <span className="text-gray-500">账号由 GTC 开通，如需开通请联系 </span>
+              <a href="mailto:info@gtc-ai-global.com" className="text-gtc-accent font-medium hover:underline">
+                info@gtc-ai-global.com
+              </a>
             </div>
           </div>
 
