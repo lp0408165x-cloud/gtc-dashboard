@@ -51,8 +51,8 @@ const CasesListPage = () => {
 
   const filteredCases = cases.filter((caseItem) => {
    const matchesSearch =
-     (caseItem.title?.toLowerCase() ?? '').includes(searchTerm.toLowerCase()) ||
-     (caseItem.cbp_case_number?.toLowerCase() ?? '').includes(searchTerm.toLowerCase());
+     (caseItem.case_title?.toLowerCase() ?? '').includes(searchTerm.toLowerCase()) ||
+     (caseItem.case_number?.toLowerCase() ?? '').includes(searchTerm.toLowerCase());
     const matchesFilter = filterStatus === 'all' || caseItem.status === filterStatus;
     return matchesSearch && matchesFilter;
   });
@@ -161,7 +161,7 @@ const CasesListPage = () => {
                     </td>
                     <td className="px-6 py-4">
                       <span className="text-gray-600 font-mono text-sm">
-                        {caseItem.cbp_case_number || '-'}
+                        {caseItem.case_number || '-'}
                       </span>
                     </td>
                     <td className="px-6 py-4">
