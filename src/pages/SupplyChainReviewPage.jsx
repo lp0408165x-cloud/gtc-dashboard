@@ -20,6 +20,8 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { supplyChainAPI } from '../services/supplyChainApi';
+import { useAuth } from '../context/AuthContext';
+import { isInternal } from '../utils/roles';
 
 // 任务类型图标映射
 const taskIcons = {
@@ -31,6 +33,8 @@ const taskIcons = {
 };
 
 const SupplyChainReviewPage = () => {
+  const { user } = useAuth();
+
   // 步骤状态
   const [currentStep, setCurrentStep] = useState(1);
   
@@ -398,13 +402,15 @@ const SupplyChainReviewPage = () => {
                 {selectedCerts.length > 0 && ` • ${selectedCerts.join(', ')}`}
               </p>
             </div>
-            <button
-              onClick={handlePreviewPrompt}
-              className="text-blue-600 hover:text-blue-700 text-sm flex items-center gap-1"
-            >
-              <Eye className="w-4 h-4" />
-              预览提示词
-            </button>
+            {isInternal(user) && (
+              <button
+                onClick={handlePreviewPrompt}
+                className="text-blue-600 hover:text-blue-700 text-sm flex items-center gap-1"
+              >
+                <Eye className="w-4 h-4" />
+                预览提示词
+              </button>
+            )}
           </div>
         </div>
 
@@ -565,7 +571,7 @@ const SupplyChainReviewPage = () => {
 
   // 渲染提示词预览模态框
   const renderPromptModal = () => (
-    showPromptModal && (
+    showPromptModal && isInternal(user) && (
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
         <div className="bg-white rounded-2xl w-full max-w-3xl max-h-[80vh] overflow-hidden">
           <div className="flex items-center justify-between p-4 border-b">
