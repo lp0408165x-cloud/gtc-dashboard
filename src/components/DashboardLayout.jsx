@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Outlet, Navigate, useNavigate } from 'react-router-dom';
+import { PageErrorBoundary } from './ErrorBoundary';
 import { useAuth } from '../context/AuthContext';
 import { isParticipant } from '../utils/roles';
 import Sidebar from './Sidebar';
@@ -124,7 +125,7 @@ const DashboardLayout = () => {
 
         {/* Main Content */}
         <main className="flex-1 p-8">
-          <Outlet />
+          <PageErrorBoundary><Outlet /></PageErrorBoundary>
         </main>
       </div>
       <AIChatWidget />

@@ -45,19 +45,20 @@ const NewCasePage = () => {
     setError('');
     setIsLoading(true);
     try {
-      const caseData = {
-        ...formData,
-        declared_value: formData.declared_value
-          ? parseFloat(formData.declared_value)
-          : null,
-      };
+      // 没填的字段发 null，不发 ""（"" 在日期、数字字段上会校验失败）
+      const caseData = Object.fromEntries(
+        Object.entries(formData).map(([k, v]) => [k, typeof v === 'string' && !v.trim() ? null : v])
+      );
+      if (caseData.declared_value != null) caseData.declared_value = parseFloat(caseData.declared_value);
       const newCase = await casesAPI.create(caseData);
       setSuccess(true);
       setTimeout(() => {
         navigate(`/cases/${newCase.id}?tab=files`);
       }, 1500);
     } catch (err) {
-      setError(err.response?.data?.detail || '创建案件失败，请稍后重试');
+      const detail = err.response?.data?.detail;
+      // 订阅/用量检查返回的是对象 {error, message}，只取文字，不能直接渲染对象
+      setError((typeof detail === 'string' && detail) || detail?.message || '创建案件失败，请稍后重试');
       setStep(1);
     } finally {
       setIsLoading(false);

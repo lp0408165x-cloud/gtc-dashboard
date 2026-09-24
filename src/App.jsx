@@ -30,6 +30,7 @@ import SolarTariffPage from './pages/SolarTariffPage';
 import ShipmentsPage from './pages/ShipmentsPage';
 import { InviteLoginPage, RoomLoginPage } from './pages/room/RoomAuth';
 import RoomPage from './pages/room/RoomPage';
+import { PageErrorBoundary } from './components/ErrorBoundary';
 import { useAuth } from './context/AuthContext';
 import { isInternal } from './utils/roles';
 
@@ -44,6 +45,8 @@ function InternalOnly({ children }) {
 function App() {
   return (
     <AuthProvider>
+      {/* 所有页面的兜底；后台页面在 DashboardLayout 里另有一层，出错时侧边栏还在 */}
+      <PageErrorBoundary>
       <Routes>
         {/* Public Routes */}
         <Route path="/login" element={<LoginPage />} />
@@ -88,6 +91,7 @@ function App() {
         {/* 404 */}
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
+      </PageErrorBoundary>
     </AuthProvider>
   );
 }

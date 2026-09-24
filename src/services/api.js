@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { API_BASE } from '../config/line';
+import { formatValidationDetail } from '../utils/apiError';
 
 const api = axios.create({
   baseURL: `${API_BASE}/api/v1`,
@@ -22,6 +23,12 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    // 422 的 detail 是数组，页面直接渲染会整页崩：统一换成「字段名：原因」字符串
+    if (error.response?.status === 422 && Array.isArray(error.response.data?.detail)) {
+      error.response.data.validationErrors = error.response.data.detail;
+      error.response.data.detail = formatValidationDetail(error.response.data.detail);
+      error.message = error.response.data.detail;
+    }
     if (error.response?.status === 401) {
       let wasParticipant = false;
       try { wasParticipant = JSON.parse(localStorage.getItem('gtc_user') || 'null')?.role === 'participant'; } catch { /* 忽略 */ }
