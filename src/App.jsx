@@ -30,6 +30,15 @@ import SolarTariffPage from './pages/SolarTariffPage';
 import ShipmentsPage from './pages/ShipmentsPage';
 import { InviteLoginPage, RoomLoginPage } from './pages/room/RoomAuth';
 import RoomPage from './pages/room/RoomPage';
+import { useAuth } from './context/AuthContext';
+import { isInternal } from './utils/roles';
+
+// 后端仅对内部角色开放的页面：其他角色直接回控制台
+function InternalOnly({ children }) {
+  const { user, loading } = useAuth();
+  if (loading) return null;          // 刷新时用户信息还在从本地恢复，别提前跳走
+  return isInternal(user) ? children : <Navigate to="/dashboard" replace />;
+}
 
 
 function App() {
@@ -54,7 +63,7 @@ function App() {
           <Route path="cases" element={<CasesListPage />} />
           <Route path="cases/new" element={<NewCasePage />} />
           <Route path="cases/:id" element={<CaseDetailPage />} />
-          <Route path="supply-chain-review" element={<SupplyChainReviewPage />} />
+          <Route path="supply-chain-review" element={<InternalOnly><SupplyChainReviewPage /></InternalOnly>} />
           <Route path="analytics" element={<AnalyticsPage />} />
           <Route path="users" element={<UsersPage />} />
           <Route path="settings" element={<SettingsPage />} />

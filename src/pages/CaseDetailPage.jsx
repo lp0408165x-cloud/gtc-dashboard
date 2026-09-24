@@ -1282,6 +1282,8 @@ const CaseDetailPage = () => {
 
           {activeTab === 'ai' && (
             <div className="space-y-6">
+              {/* 分析师合规分析：后端 /agent 仅内部角色可用 */}
+              {isInternal(user) && (
               <div className="p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl border border-blue-100">
                 <h3 className="text-lg font-semibold text-gray-800 mb-3">分析师合规分析</h3>
                 <p className="text-sm text-gray-600 mb-4">自动校验文件完整性：文档预处理 → 字段提取 → 一致性校验 → 风险扫描</p>
@@ -1307,6 +1309,7 @@ const CaseDetailPage = () => {
                   }}
                 />
               </div>
+              )}
               {/* CBP 合规报告生成：仅内部角色可见 */}
               {isInternal(user) && (
                 <>

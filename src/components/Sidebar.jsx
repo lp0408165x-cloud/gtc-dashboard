@@ -7,6 +7,7 @@ import {
   CreditCard, BookOpen, GraduationCap, Calculator,FileSearch,Sun, Ship,
 } from 'lucide-react';
 import { useState } from 'react';
+import { isInternal } from '../utils/roles';
 
 const Sidebar = () => {
   const [collapsed, setCollapsed] = useState(false);
@@ -24,7 +25,7 @@ const Sidebar = () => {
     { path: '/dashboard',           icon: LayoutDashboard, label: '控制台',    adminOnly: false },
     { path: '/cases',               icon: FolderOpen,      label: '案件管理',  adminOnly: false },
     { path: '/cases/new',           icon: FilePlus,        label: '新建案件',  adminOnly: false },
-    { path: '/supply-chain-review', icon: Package,         label: '供应链审查',adminOnly: false },
+    { path: '/supply-chain-review', icon: Package,         label: '供应链审查',adminOnly: false, internalOnly: true },
     { path: '/supplier-scan',       icon: ShieldAlert,     label: '供应商扫描',adminOnly: false },
     { path: '/cases/seizure', icon: AlertTriangle, label: '罚没应对', adminOnly: false, badge: 'NEW' },
     { path: '/tariff-calculator',   icon: Calculator,      label: '关税计算器',adminOnly: false },
@@ -41,7 +42,7 @@ const Sidebar = () => {
     { path: '/settings',            icon: Settings,        label: '设置',      adminOnly: false },
   ];
 
-  const navItems = allNavItems.filter(item => !item.adminOnly || isAdmin);
+  const navItems = allNavItems.filter(item => (!item.adminOnly || isAdmin) && (!item.internalOnly || isInternal(user)));
 
   return (
     <aside className={`bg-gtc-navy h-screen sticky top-0 transition-all duration-300 flex flex-col ${collapsed ? 'w-20' : 'w-64'}`}>

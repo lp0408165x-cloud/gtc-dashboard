@@ -15,7 +15,10 @@ export const agentAPI = {
   analyzeWithProgress: (caseId, callbacks = {}) => {
     const { onProgress, onComplete, onError, onStart } = callbacks;
     
-    const ws = new WebSocket(`${WS_BASE}/api/v1/agent/ws/${caseId}`);
+    // 浏览器 WebSocket 不能带 Authorization 头，token 放在子协议里（后端 deps.accept_internal_websocket）
+    const token = localStorage.getItem('gtc_token');
+    const ws = new WebSocket(`${WS_BASE}/api/v1/agent/ws/${caseId}`, token ? ['bearer', token] : undefined);
+    let failed = false;
     
     ws.onopen = () => {
       console.log('Agent WebSocket connected');
@@ -44,11 +47,15 @@ export const agentAPI = {
     
     ws.onerror = (error) => {
       console.error('WebSocket error:', error);
+      failed = true;
       onError && onError({ message: 'WebSocket connection failed' });
     };
     
-    ws.onclose = () => {
+    ws.onclose = (event) => {
       console.log('Agent WebSocket closed');
+      if (failed) return;
+      if (event.code === 4401) onError && onError({ message: '登录已过期，请重新登录' });
+      else if (event.code === 4403) onError && onError({ message: '当前账号无权使用此功能' });
     };
     
     return ws;
