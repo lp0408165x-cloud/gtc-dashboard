@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 
 import { API_BASE as API_URL } from '../config/line';
+import { openSignedLink } from '../utils/openSignedLink';
 
 const SLOT_ICONS = { '1': '📋', '2': '📨', '3': '📦' };
 const URGENCY_COLOR = {
@@ -159,6 +160,7 @@ export default function IntakeUploadPanel({ caseId, onAnalysisComplete }) {
           <IntakeSlotRow
             key={slot.slot_key}
             slot={slot}
+            caseId={caseId}
             uploading={uploading === slot.slot_key}
             onUpload={(file) => handleUpload(slot.slot_key, file)}
           />
@@ -215,7 +217,7 @@ export default function IntakeUploadPanel({ caseId, onAnalysisComplete }) {
 
 
 // ── 单个首次提交槽位 ──
-function IntakeSlotRow({ slot, uploading, onUpload }) {
+function IntakeSlotRow({ slot, caseId, uploading, onUpload }) {
   const inputId = `intake-${slot.slot_key}`;
   const uploaded = slot.status === 'uploaded';
 
@@ -261,15 +263,14 @@ function IntakeSlotRow({ slot, uploading, onUpload }) {
         {/* 操作 */}
         <div className="shrink-0 flex items-center gap-2">
           {uploaded && slot.file_url && (
-            <a
-              href={slot.file_url}
-              target="_blank"
-              rel="noopener noreferrer"
+            <button
+              type="button"
+              onClick={() => openSignedLink(`/intake/${caseId}/files/${slot.slot_key}/link`)}
               className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100"
             >
               <Eye className="w-3.5 h-3.5" />
               查看
-            </a>
+            </button>
           )}
 
           <input type="file" id={inputId} className="hidden"

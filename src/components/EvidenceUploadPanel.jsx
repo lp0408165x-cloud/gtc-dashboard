@@ -7,8 +7,7 @@ import {
 import { filesAPI } from '../services/api';
 import IntakeUploadPanel from './IntakeUploadPanel';
 import { API_BASE as API_URL } from '../config/line';
-
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+import { openSignedLink } from '../utils/openSignedLink';
 
 const STATUS_CONFIG = {
   empty:    { label: '待上传', color: 'text-gray-400',  bg: 'bg-gray-50',  icon: Clock },
@@ -32,12 +31,6 @@ const VALIDATION_STATUS_CONFIG = {
   error:      { label: '校验暂不可用',  color: 'text-gray-500',  bg: 'bg-gray-50',  border: 'border-gray-200',  icon: AlertCircle },
   skipped:    { label: '已跳过',       color: 'text-gray-400',  bg: 'bg-gray-50',  border: 'border-gray-200',  icon: null },
 };
-
-function getFileViewUrl(fileUrl) {
-  if (!fileUrl) return '#';
-  if (fileUrl.startsWith('http')) return fileUrl;
-  return `${SUPABASE_URL || ''}/storage/v1/object/public/case-files/${fileUrl}`;
-}
 
 // ─────────────────────────────────────────────
 // 主组件
@@ -393,7 +386,6 @@ function SlotRow({ slot, uploading, onUpload }) {
   };
 
   const inputId = `file-${slot.id}`;
-  const viewUrl = getFileViewUrl(slot.file_url);
 
   return (
     <div
@@ -465,10 +457,10 @@ function SlotRow({ slot, uploading, onUpload }) {
               </>
             )}
             {slot.status === 'uploaded' && slot.file_url && (
-              <a href={viewUrl} target="_blank" rel="noopener noreferrer"
+              <button type="button" onClick={() => openSignedLink(`/evidence/slots/${slot.id}/link`)}
                 className="inline-flex items-center gap-1 px-3 py-1.5 text-xs text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100">
                 <Eye className="w-3.5 h-3.5" />查看
-              </a>
+              </button>
             )}
             {slot.status === 'verified' && <span className="text-xs text-green-500">✓</span>}
           </>
