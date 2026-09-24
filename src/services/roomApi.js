@@ -1,6 +1,7 @@
-// 案件室：登录与本人信息
-// 登录相关接口不需要 token；/room/me 需要。
+// 案件室：登录、本人信息、案件室内容与上传
+// 登录相关接口不需要 token；其余需要。
 import api from './api';
+import { detailText } from '../utils/apiError';
 
 export const roomAPI = {
   // 打开专属链接：校验链接，拿到脱敏邮箱与案件名
@@ -14,12 +15,29 @@ export const roomAPI = {
     api.post('/room/login/verify', { email, code, invite_token: inviteToken }).then((r) => r.data),
   // 当前账号加入的案件
   me: () => api.get('/room/me').then((r) => r.data),
+
+  // 案件室首页：案件头、待您提供、已提交
+  caseRoom: (caseId) => api.get(`/room/cases/${caseId}`).then((r) => r.data),
+  // 上传一个文件到任务；onProgress(0–100)
+  upload: (caseId, taskId, file, onProgress) => {
+    const fd = new FormData();
+    fd.append('file', file, file.name);
+    return api.post(`/room/cases/${caseId}/tasks/${taskId}/files`, fd, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 0,
+      onUploadProgress: (e) => {
+        if (onProgress && e.total) onProgress(Math.min(99, Math.round((e.loaded / e.total) * 100)));
+      },
+    }).then((r) => r.data);
+  },
+  // 本人文件的签名链接
+  fileLink: (fileId, download = false) =>
+    api.get(`/room/files/${fileId}/link`, { params: download ? { download: true } : {} }).then((r) => r.data.url),
 };
 
-// 后端错误 detail 可能是字符串或校验错误数组
-export const errorText = (err, fallback = '操作失败，请稍后重试') => {
-  const d = err?.response?.data?.detail;
-  if (typeof d === 'string') return d;
-  if (Array.isArray(d)) return d.map((e) => e.msg).filter(Boolean).join('；') || fallback;
-  return fallback;
-};
+// 后端错误 → 可显示的文字（字符串、422 数组、{message} 对象都能处理）
+export const errorText = (err, fallback = '操作失败，请稍后重试') =>
+  detailText(err?.response?.data?.detail, fallback);
+
+// 微信内置浏览器
+export const isWeChat = () => /MicroMessenger/i.test(navigator.userAgent || '');
