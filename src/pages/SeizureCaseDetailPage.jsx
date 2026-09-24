@@ -9,6 +9,7 @@ import {
 import { API_BASE as API_URL } from '../config/line';
 import { useAuth } from '../context/AuthContext';
 import { isInternal } from '../utils/roles';
+import { detailText, responseErrorText } from '../utils/apiError';
 
 const PENDING_MSG = '分析由 GTC 专家发起，完成后在此显示';
 
@@ -70,7 +71,7 @@ export default function SeizureCaseDetailPage() {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(typeof data.detail === 'string' ? data.detail : `分析失败（${res.status}）`);
+      if (!res.ok) throw new Error(detailText(data.detail, `分析失败（${res.status}）`));
       setAnalysis(data.analysis);
     } catch (e) {
       setAnalysisError(e.message || '分析失败，请稍后重试');
@@ -454,7 +455,11 @@ export default function SeizureCaseDetailPage() {
                         method: 'POST',
                         headers: { Authorization: `Bearer ${token}` },
                       });
-                      if (res.ok) {
+                      if (!res.ok) {
+                        alert(await responseErrorText(res, '报告生成失败，请稍后重试'));
+                        return;
+                      }
+                      {
                         const blob = await res.blob();
                         const url = URL.createObjectURL(blob);
                         const a = document.createElement('a');

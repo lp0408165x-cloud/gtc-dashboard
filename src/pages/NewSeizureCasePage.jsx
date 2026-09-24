@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { AlertTriangle, ChevronLeft, Save, Loader2 } from 'lucide-react';
 
 import { API_BASE as API_URL } from '../config/line';
+import { responseErrorText } from '../utils/apiError';
 
 const INITIAL = {
   ior_name: '', seizure_number: '', notice_date: '', declared_value: '',
@@ -100,10 +101,7 @@ export default function NewSeizureCasePage() {
         },
         body: JSON.stringify(form),
       });
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.detail || '提交失败');
-      }
+      if (!res.ok) throw new Error(await responseErrorText(res, '提交失败，请稍后重试'));
       const data = await res.json();
       navigate(`/cases/seizure/${data.id}`);
     } catch (e) {

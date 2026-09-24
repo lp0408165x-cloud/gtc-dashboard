@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Send, Plus, FileText, CheckCircle, Clock, AlertCircle, Loader2, ChevronDown, ChevronUp, X } from 'lucide-react';
 import { API_BASE } from '../config/line';
+import { responseErrorText } from '../utils/apiError';
 
 const SUBMISSION_CHANNELS = ['ACE系统', '邮件', '快递/邮寄', '传真', '其他'];
 const SUBMISSION_STATUSES = [
@@ -27,18 +28,8 @@ const authHeaders = () => ({
   Authorization: `Bearer ${localStorage.getItem('gtc_token')}`,
 });
 
-// 后端错误体是 { detail: ... }，detail 可能是字符串，也可能是校验错误数组
-const errText = async (res, fallback) => {
-  try {
-    const body = await res.json();
-    const d = body?.detail;
-    if (typeof d === 'string') return d;
-    if (Array.isArray(d)) return d.map((e) => e.msg || '').filter(Boolean).join('；') || fallback;
-  } catch {
-    /* 响应体不是 JSON */
-  }
-  return fallback;
-};
+// 后端错误体 { detail } → 文字（字符串、422 数组、{message} 对象；与全站同一套规则）
+const errText = responseErrorText;
 
 const SubmissionLog = ({ caseId }) => {
   const [submissions, setSubmissions] = useState([]);

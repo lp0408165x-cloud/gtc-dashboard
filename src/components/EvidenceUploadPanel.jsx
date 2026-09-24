@@ -8,7 +8,7 @@ import { filesAPI } from '../services/api';
 import IntakeUploadPanel from './IntakeUploadPanel';
 import { API_BASE as API_URL } from '../config/line';
 import { openSignedLink } from '../utils/openSignedLink';
-import { detailText, UPLOAD_FAILED } from '../utils/apiError';
+import { detailText, responseErrorText, UPLOAD_FAILED } from '../utils/apiError';
 
 const STATUS_CONFIG = {
   empty:    { label: '待上传', color: 'text-gray-400',  bg: 'bg-gray-50',  icon: Clock },
@@ -102,7 +102,7 @@ export default function EvidenceUploadPanel({ caseId, caseType, visibleSlots, in
         setError('请先选择案件类型');
         return;
       }
-      if (!res.ok) throw new Error('获取证据槽位失败');
+      if (!res.ok) throw new Error(await responseErrorText(res, '获取证据槽位失败'));
 
       const data = await res.json();
       const allSlots = data.slots || [];
@@ -147,7 +147,7 @@ export default function EvidenceUploadPanel({ caseId, caseType, visibleSlots, in
         headers: { ...headers, 'Content-Type': 'application/json' },
         body: JSON.stringify({ case_type: caseType }),
       });
-      if (!res.ok) throw new Error('初始化槽位失败');
+      if (!res.ok) throw new Error(await responseErrorText(res, '初始化槽位失败'));
       await fetchSlots();
     } catch (err) {
       setError(err.message);

@@ -97,3 +97,13 @@ export function detailText(detail, fallback) {
   if (detail && typeof detail.message === 'string' && detail.message) return detail.message;
   return fallback;
 }
+
+/**
+ * 原生 fetch 的失败响应 → 可显示的文字（与 axios 拦截器同一套规则）。
+ * 用法：if (!res.ok) throw new Error(await responseErrorText(res, '保存失败'));
+ */
+export async function responseErrorText(res, fallback) {
+  let body = null;
+  try { body = await res.clone().json(); } catch { /* 非 JSON（网关错误页等） */ }
+  return detailText(body?.detail, fallback);
+}

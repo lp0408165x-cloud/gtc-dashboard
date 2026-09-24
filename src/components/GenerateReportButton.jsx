@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 
 import { API_BASE } from '../config/line';
+import { responseErrorText } from '../utils/apiError';
 
 // ─── 辅助：状态颜色 ─────────────────────────────
 const STATUS_STYLES = {
@@ -285,15 +286,12 @@ const GenerateReportButton = ({ caseId, caseData }) => {
         body: JSON.stringify({}),
       });
 
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.detail || `Server error ${res.status}`);
-      }
+      if (!res.ok) throw new Error(await responseErrorText(res, '报告预览失败，请稍后重试'));
 
       const data = await res.json();
       setPreviewData(data.report);
     } catch (e) {
-      setError(e.message || 'Preview failed');
+      setError(e.message || '报告预览失败，请稍后重试');
     } finally {
       setPreviewing(false);
     }
@@ -310,10 +308,7 @@ const GenerateReportButton = ({ caseId, caseData }) => {
         body: JSON.stringify({ report_type: 'full_report' }),
       });
 
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.detail || `Server error ${res.status}`);
-      }
+      if (!res.ok) throw new Error(await responseErrorText(res, '报告生成失败，请稍后重试'));
 
       const blob = await res.blob();
       const url = window.URL.createObjectURL(blob);
