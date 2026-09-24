@@ -1,4 +1,5 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { useEffect } from 'react';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import DashboardLayout from './components/DashboardLayout';
 import LoginPage from './pages/LoginPage';
@@ -31,6 +32,7 @@ import ShipmentsPage from './pages/ShipmentsPage';
 import { InviteLoginPage, RoomLoginPage } from './pages/room/RoomAuth';
 import RoomPage from './pages/room/RoomPage';
 import { PageErrorBoundary } from './components/ErrorBoundary';
+import { titleFor } from './utils/pageTitle';
 import { useAuth } from './context/AuthContext';
 import { isInternal } from './utils/roles';
 
@@ -42,9 +44,17 @@ function InternalOnly({ children }) {
 }
 
 
+// 网页标题随路由：案件室「GTC 案件室」，其余「GTC 平台」
+function PageTitle() {
+  const { pathname } = useLocation();
+  useEffect(() => { document.title = titleFor(pathname); }, [pathname]);
+  return null;
+}
+
 function App() {
   return (
     <AuthProvider>
+      <PageTitle />
       {/* 所有页面的兜底；后台页面在 DashboardLayout 里另有一层，出错时侧边栏还在 */}
       <PageErrorBoundary>
       <Routes>

@@ -4,7 +4,11 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>GTC-AI 合规溯源平台</title>
+    <title>GTC 平台</title>
+    <script>
+      // 案件室页面的标题在脚本加载前就定好（微信顶栏读的就是它）；规则同 src/utils/pageTitle.js
+      if (/^\/(r|room)(\/|$)|^\/room-login(\/|$)/.test(location.pathname)) document.title = 'GTC 案件室';
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
