@@ -461,7 +461,8 @@ function SlotRow({ slot, uploading, onUpload }) {
                 </label>
               </>
             )}
-            {slot.status === 'uploaded' && slot.file_url && (
+            {/* 已上传、已验证的都能查看和下载 */}
+            {(slot.status === 'uploaded' || slot.status === 'verified') && slot.file_url && (
               <>
                 <button type="button" onClick={() => openSignedLink(`/evidence/slots/${slot.id}/link`)}
                   className="inline-flex items-center gap-1 px-3 py-1.5 text-xs text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100">
