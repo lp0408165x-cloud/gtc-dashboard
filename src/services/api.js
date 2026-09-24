@@ -23,9 +23,13 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
+      let wasParticipant = false;
+      try { wasParticipant = JSON.parse(localStorage.getItem('gtc_user') || 'null')?.role === 'participant'; } catch { /* 忽略 */ }
+      const inRoom = /^\/(room|r)(\/|$)|^\/room-login/.test(window.location.pathname);
       localStorage.removeItem('gtc_token');
       localStorage.removeItem('gtc_user');
-      window.location.href = '/login';
+      // 参与人没有密码，回后台登录页也进不去
+      window.location.href = wasParticipant || inRoom ? '/room-login' : '/login';
     }
     return Promise.reject(error);
   }

@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Outlet, Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { isParticipant } from '../utils/roles';
 import Sidebar from './Sidebar';
 import { Bell, Search, Settings, LogOut, ChevronDown } from 'lucide-react';
 import AIChatWidget from './AIChatWidget';
@@ -36,6 +37,11 @@ const DashboardLayout = () => {
 
   if (!isAuthenticated()) {
     return <Navigate to="/login" replace />;
+  }
+
+  // 案件参与人不进后台
+  if (isParticipant(user)) {
+    return <Navigate to="/room" replace />;
   }
 
   const handleLogout = () => {

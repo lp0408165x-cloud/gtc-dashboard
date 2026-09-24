@@ -14,3 +14,6 @@
 export const INTERNAL_ROLES = ['super_admin', 'admin', 'expert'];
 
 export const isInternal = (user) => INTERNAL_ROLES.includes(user?.role);
+
+// 案件参与人：只能进案件室（/room），不进后台
+export const isParticipant = (user) => user?.role === 'participant';

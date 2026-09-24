@@ -28,6 +28,8 @@ import SeizureCaseDetailPage from './pages/SeizureCaseDetailPage';
 import QuickCheckPage from './pages/QuickCheckPage';
 import SolarTariffPage from './pages/SolarTariffPage';
 import ShipmentsPage from './pages/ShipmentsPage';
+import { InviteLoginPage, RoomLoginPage } from './pages/room/RoomAuth';
+import RoomPage from './pages/room/RoomPage';
 
 
 function App() {
@@ -38,6 +40,12 @@ function App() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<Navigate to="/login" replace />} />  {/* 账号由 GTC 开通，不开放自助注册 */}
         <Route path="/accept-invite" element={<AcceptInvitePage />} />
+
+        {/* 案件室：参与人免密登录后只看得到这里，没有侧边栏 */}
+        <Route path="/r/:token" element={<InviteLoginPage />} />
+        <Route path="/room-login" element={<RoomLoginPage />} />
+        <Route path="/room" element={<RoomPage />} />
+        <Route path="/room/:caseId" element={<RoomPage />} />
 
         {/* Protected Routes */}
         <Route path="/" element={<DashboardLayout />}>
