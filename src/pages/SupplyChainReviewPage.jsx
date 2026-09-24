@@ -22,6 +22,7 @@ import {
 import { supplyChainAPI } from '../services/supplyChainApi';
 import { useAuth } from '../context/AuthContext';
 import { isInternal } from '../utils/roles';
+import { detailText, UPLOAD_FAILED } from '../utils/apiError';
 
 // 任务类型图标映射
 const taskIcons = {
@@ -144,7 +145,7 @@ const SupplyChainReviewPage = () => {
       setTotalPages(updated.total_pages || 0);
     } catch (err) {
       console.error('Failed to upload file:', err);
-      setError('文件上传失败');
+      setError(detailText(err.response?.data?.detail, UPLOAD_FAILED));
     } finally {
       setLoading(false);
     }

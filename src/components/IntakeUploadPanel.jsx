@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Upload, FileText, CheckCircle, AlertCircle, Loader2,
-  ChevronRight, Sparkles, AlertTriangle, Eye, RotateCcw
+  ChevronRight, Sparkles, AlertTriangle, Eye, RotateCcw, Download
 } from 'lucide-react';
 
 import { API_BASE as API_URL } from '../config/line';
 import { openSignedLink } from '../utils/openSignedLink';
+import { detailText, UPLOAD_FAILED } from '../utils/apiError';
 
 const SLOT_ICONS = { '1': '📋', '2': '📨', '3': '📦' };
 const URGENCY_COLOR = {
@@ -77,12 +78,13 @@ export default function IntakeUploadPanel({ caseId, onAnalysisComplete }) {
         { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: formData }
       );
       if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.detail || '上传失败');
+        const err = await res.json().catch(() => ({}));
+        throw new Error(detailText(err.detail, UPLOAD_FAILED));
       }
       await fetchSlots();
     } catch (e) {
-      setError(e.message);
+      // 网络错误等没有后端说明的情况，也给统一提示
+      setError(e.message && !/fetch|network/i.test(e.message) ? e.message : UPLOAD_FAILED);
     } finally {
       setUploading(null);
     }
@@ -263,14 +265,25 @@ function IntakeSlotRow({ slot, caseId, uploading, onUpload }) {
         {/* 操作 */}
         <div className="shrink-0 flex items-center gap-2">
           {uploaded && slot.file_url && (
-            <button
-              type="button"
-              onClick={() => openSignedLink(`/intake/${caseId}/files/${slot.slot_key}/link`)}
-              className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100"
-            >
-              <Eye className="w-3.5 h-3.5" />
-              查看
-            </button>
+            <>
+              <button
+                type="button"
+                onClick={() => openSignedLink(`/intake/${caseId}/files/${slot.slot_key}/link`)}
+                className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100"
+              >
+                <Eye className="w-3.5 h-3.5" />
+                查看
+              </button>
+              {/* 下载：按上传时的原文件名保存 */}
+              <button
+                type="button"
+                onClick={() => openSignedLink(`/intake/${caseId}/files/${slot.slot_key}/link?download=true`)}
+                className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100"
+              >
+                <Download className="w-3.5 h-3.5" />
+                下载
+              </button>
+            </>
           )}
 
           <input type="file" id={inputId} className="hidden"

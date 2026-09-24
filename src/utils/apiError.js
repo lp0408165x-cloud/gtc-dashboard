@@ -87,3 +87,13 @@ export function formatValidationDetail(detail) {
   });
   return [...new Set(lines)].join('；') || '提交的内容有误，请检查后重试';
 }
+
+export const UPLOAD_FAILED = '文件上传失败，请重试或联系我们';
+
+/** 把后端 detail（字符串 / 422 数组 / {error, message} 对象）转成可以直接显示的文字 */
+export function detailText(detail, fallback) {
+  if (typeof detail === 'string' && detail) return detail;
+  if (Array.isArray(detail)) return formatValidationDetail(detail);
+  if (detail && typeof detail.message === 'string' && detail.message) return detail.message;
+  return fallback;
+}

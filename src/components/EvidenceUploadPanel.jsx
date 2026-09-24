@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Upload, CheckCircle, XCircle, AlertCircle, Clock,
-  ChevronDown, ChevronRight, FileText, Eye,
+  ChevronDown, ChevronRight, FileText, Eye, Download,
   Loader2, Shield, RefreshCw, AlertTriangle
 } from 'lucide-react';
 import { filesAPI } from '../services/api';
 import IntakeUploadPanel from './IntakeUploadPanel';
 import { API_BASE as API_URL } from '../config/line';
 import { openSignedLink } from '../utils/openSignedLink';
+import { detailText, UPLOAD_FAILED } from '../utils/apiError';
 
 const STATUS_CONFIG = {
   empty:    { label: '待上传', color: 'text-gray-400',  bg: 'bg-gray-50',  icon: Clock },
@@ -173,7 +174,10 @@ export default function EvidenceUploadPanel({ caseId, caseType, visibleSlots, in
           document_id: null,
         }),
       });
-      if (!patchRes.ok) throw new Error('更新槽位失败');
+      if (!patchRes.ok) {
+        const err = await patchRes.json().catch(() => ({}));
+        throw new Error(detailText(err.detail, UPLOAD_FAILED));
+      }
 
       const patchData = await patchRes.json();
       if (patchData.ai_validation?.should_reject) {
@@ -182,7 +186,8 @@ export default function EvidenceUploadPanel({ caseId, caseType, visibleSlots, in
       }
       await fetchSlots();
     } catch (err) {
-      alert(err.message);
+      // axios 错误（文件上传那一步）取后端说明；其余用上面抛出的中文
+      alert(err.response ? detailText(err.response.data?.detail, UPLOAD_FAILED) : (err.message || UPLOAD_FAILED));
     } finally {
       setUploadingSlot(null);
     }
@@ -457,10 +462,17 @@ function SlotRow({ slot, uploading, onUpload }) {
               </>
             )}
             {slot.status === 'uploaded' && slot.file_url && (
-              <button type="button" onClick={() => openSignedLink(`/evidence/slots/${slot.id}/link`)}
-                className="inline-flex items-center gap-1 px-3 py-1.5 text-xs text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100">
-                <Eye className="w-3.5 h-3.5" />查看
-              </button>
+              <>
+                <button type="button" onClick={() => openSignedLink(`/evidence/slots/${slot.id}/link`)}
+                  className="inline-flex items-center gap-1 px-3 py-1.5 text-xs text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100">
+                  <Eye className="w-3.5 h-3.5" />查看
+                </button>
+                {/* 下载：按上传时的原文件名保存 */}
+                <button type="button" onClick={() => openSignedLink(`/evidence/slots/${slot.id}/link?download=true`)}
+                  className="inline-flex items-center gap-1 px-3 py-1.5 text-xs text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100">
+                  <Download className="w-3.5 h-3.5" />下载
+                </button>
+              </>
             )}
             {slot.status === 'verified' && <span className="text-xs text-green-500">✓</span>}
           </>

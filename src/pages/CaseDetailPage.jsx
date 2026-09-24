@@ -3,6 +3,7 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { casesAPI, filesAPI, aiAPI, toolsAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { isInternal } from '../utils/roles';
+import { detailText, UPLOAD_FAILED } from '../utils/apiError';
 import GenerateReportButton from '../components/GenerateReportButton';
 import AgentAnalyzeButton from '../components/AgentAnalyzeButton';
 import EvidenceUploadPanel from '../components/EvidenceUploadPanel';
@@ -285,7 +286,7 @@ const CaseDetailPage = () => {
       await filesAPI.upload(id, file);
       await fetchCaseData();
     } catch (error) {
-      alert('文件上传失败');
+      alert(detailText(error.response?.data?.detail, UPLOAD_FAILED));
     } finally {
       setUploading(false);
     }
@@ -416,7 +417,7 @@ const CaseDetailPage = () => {
       await filesAPI.upload(id, file);
       await fetchCaseData();
     } catch (error) {
-      alert('文件上传失败');
+      alert(detailText(error.response?.data?.detail, UPLOAD_FAILED));
     } finally {
       setUploading(false);
     }
