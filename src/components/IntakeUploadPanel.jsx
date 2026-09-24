@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  Upload, FileText, CheckCircle, AlertCircle, Loader2,
-  ChevronRight, Sparkles, AlertTriangle, Eye, RotateCcw, Download
+  FileText, AlertCircle, CheckCircle, Loader2, Sparkles, AlertTriangle, Eye, RotateCcw, Download, Plus, History,
 } from 'lucide-react';
 
-import { API_BASE as API_URL } from '../config/line';
+import api from '../services/api';
 import { openSignedLink } from '../utils/openSignedLink';
-import { detailText, UPLOAD_FAILED } from '../utils/apiError';
+import { detailText } from '../utils/apiError';
+import MultiFileUploader, { fmtSize } from './MultiFileUploader';
 
 const SLOT_ICONS = { '1': '📋', '2': '📨', '3': '📦' };
 const URGENCY_COLOR = {
@@ -22,94 +22,53 @@ export default function IntakeUploadPanel({ caseId, onAnalysisComplete }) {
   const [canAnalyze, setCanAnalyze] = useState(false);
   const [analysisResult, setAnalysisResult] = useState(null);
   const [loading, setLoading]       = useState(true);
-  const [uploading, setUploading]   = useState(null);   // slot_key being uploaded
   const [analyzing, setAnalyzing]   = useState(false);
   const [error, setError]           = useState(null);
 
-  const token = localStorage.getItem('gtc_token');
-  const headers = { Authorization: `Bearer ${token}` };
+  const [limits, setLimits]         = useState(null);
 
   // ── 获取槽位状态 ──
   const fetchSlots = useCallback(async () => {
     try {
-      setLoading(true);
-      const res = await fetch(`${API_URL}/api/v1/intake/${caseId}/slots`, { headers });
-      if (!res.ok) throw new Error('获取状态失败');
-      const data = await res.json();
+      const { data } = await api.get(`/intake/${caseId}/slots`);
       setSlots(data.slots || []);
+      setLimits(data.upload);
       setIntakeStatus(data.intake_status);
       setCanAnalyze(data.can_analyze);
       if (data.analysis_complete) {
         await fetchResult();
       }
     } catch (e) {
-      setError(e.message);
+      setError(detailText(e.response?.data?.detail, '获取状态失败'));
     } finally {
       setLoading(false);
     }
-  }, [caseId]);
+  }, [caseId]);  // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchResult = async () => {
     try {
-      const res = await fetch(`${API_URL}/api/v1/intake/${caseId}/result`, { headers });
-      if (res.ok) {
-        const data = await res.json();
-        setAnalysisResult(data);
-        if (onAnalysisComplete) onAnalysisComplete(data);
-      }
+      const { data } = await api.get(`/intake/${caseId}/result`);
+      setAnalysisResult(data);
+      if (onAnalysisComplete) onAnalysisComplete(data);
     } catch (e) {
-      logger.error('fetchResult failed', e);
+      console.error('fetchResult failed', e);
     }
   };
 
   useEffect(() => { if (caseId) fetchSlots(); }, [caseId, fetchSlots]);
-
-  // ── 上传文件 ──
-  const handleUpload = async (slotKey, file) => {
-    if (!file) return;
-    setUploading(slotKey);
-    setError(null);
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-
-      const res = await fetch(
-        `${API_URL}/api/v1/intake/${caseId}/upload/${slotKey}`,
-        { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: formData }
-      );
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(detailText(err.detail, UPLOAD_FAILED));
-      }
-      await fetchSlots();
-    } catch (e) {
-      // 网络错误等没有后端说明的情况，也给统一提示
-      setError(e.message && !/fetch|network/i.test(e.message) ? e.message : UPLOAD_FAILED);
-    } finally {
-      setUploading(null);
-    }
-  };
 
   // ── 触发分析 ──
   const handleAnalyze = async () => {
     setAnalyzing(true);
     setError(null);
     try {
-      const res = await fetch(
-        `${API_URL}/api/v1/intake/${caseId}/analyze`,
-        { method: 'POST', headers }
-      );
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.detail || '分析失败');
-      }
-      const data = await res.json();
+      const { data } = await api.post(`/intake/${caseId}/analyze`);
       setAnalysisResult(data);
       setIntakeStatus('complete');
       if (onAnalysisComplete) onAnalysisComplete(data);
       await fetchSlots();
     } catch (e) {
-      setError(e.message);
+      setError(detailText(e.response?.data?.detail, '分析失败，请稍后重试'));
     } finally {
       setAnalyzing(false);
     }
@@ -140,8 +99,7 @@ export default function IntakeUploadPanel({ caseId, onAnalysisComplete }) {
           <div>
             <h3 className="font-semibold text-gray-800">首次资料提交</h3>
             <p className="text-sm text-gray-600 mt-0.5">
-              请上传以下三类文件。每类文件请合并为一个 PDF，
-              文件名格式：<span className="font-mono text-[#1B3A6B]">{`{序号}-{报关号}-{类别}`}</span>
+              请上传以下三类文件。每一类都可以上传多个文件，也可以分多次追加。
             </p>
           </div>
         </div>
@@ -163,8 +121,8 @@ export default function IntakeUploadPanel({ caseId, onAnalysisComplete }) {
             key={slot.slot_key}
             slot={slot}
             caseId={caseId}
-            uploading={uploading === slot.slot_key}
-            onUpload={(file) => handleUpload(slot.slot_key, file)}
+            limits={limits}
+            onChanged={fetchSlots}
           />
         ))}
       </div>
@@ -219,92 +177,126 @@ export default function IntakeUploadPanel({ caseId, onAnalysisComplete }) {
 
 
 // ── 单个首次提交槽位 ──
-function IntakeSlotRow({ slot, caseId, uploading, onUpload }) {
-  const inputId = `intake-${slot.slot_key}`;
-  const uploaded = slot.status === 'uploaded';
+// 每类可有多个文件。追加：直接加进来；重传：新文件上传成功后，重传开始时的文件标记为「已替换」（仍保留、可查看）。
+const fmtWhen = (v) => (v ? new Date(v).toLocaleString('zh-CN', { hour12: false }).replace(/:\d{2}$/, '') : '');
 
-  const handleChange = (e) => {
-    const file = e.target.files[0];
-    if (file) { onUpload(file); e.target.value = ''; }
+function SlotFile({ f, caseId, replaced = false }) {
+  return (
+    <li className={`flex items-start gap-2 py-2 ${replaced ? 'opacity-70' : ''}`}>
+      <FileText className={`w-4 h-4 mt-0.5 shrink-0 ${replaced ? 'text-gray-400' : 'text-green-600'}`} />
+      <div className="flex-1 min-w-0">
+        <p className={`text-sm break-all ${replaced ? 'text-gray-500 line-through' : 'text-gray-800'}`}>{f.file_name}</p>
+        <p className="text-xs text-gray-400 mt-0.5">
+          {fmtSize(f.file_size)} · {fmtWhen(f.uploaded_at)}{f.uploaded_by ? ` · ${f.uploaded_by}` : ''}
+          {replaced && ` · ${fmtWhen(f.replaced_at)} 被替换${f.replaced_by ? `（${f.replaced_by}）` : ''}`}
+        </p>
+      </div>
+      <button type="button" onClick={() => openSignedLink(`/intake/${caseId}/file/${f.id}/link`)}
+              className="shrink-0 inline-flex items-center gap-1 px-2 py-1 text-xs text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100">
+        <Eye className="w-3.5 h-3.5" />查看
+      </button>
+      {/* 下载：按上传时的原文件名保存 */}
+      <button type="button" onClick={() => openSignedLink(`/intake/${caseId}/file/${f.id}/link?download=true`)}
+              className="shrink-0 inline-flex items-center gap-1 px-2 py-1 text-xs text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100">
+        <Download className="w-3.5 h-3.5" />下载
+      </button>
+    </li>
+  );
+}
+
+function IntakeSlotRow({ slot, caseId, limits, onChanged }) {
+  const files = slot.files || [];
+  const replacedFiles = slot.replaced_files || [];
+  const has = files.length > 0;
+  // mode: null | 'append' | 'replace'；重传时记下开始那一刻的有效文件
+  const [mode, setMode] = useState(null);
+  const [replaceIds, setReplaceIds] = useState([]);
+  const [showHistory, setShowHistory] = useState(false);
+
+  const startReplace = () => {
+    if (!window.confirm(`重传：新文件上传成功后，当前 ${files.length} 个文件会标记为「已替换」，仍保留可查。继续吗？`)) return;
+    setReplaceIds(files.map((f) => f.id));
+    setMode('replace');
   };
 
-  return (
-    <div className={`rounded-xl border p-4 transition-all ${
-      uploaded
-        ? 'bg-green-50 border-green-200'
-        : 'bg-white border-gray-200 hover:border-[#1B3A6B]/30'
-    }`}>
-      <div className="flex items-start gap-3">
-        {/* 序号图标 */}
-        <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-lg shrink-0 ${
-          uploaded ? 'bg-green-100' : 'bg-gray-100'
-        }`}>
-          {uploaded ? '✅' : SLOT_ICONS[slot.slot_key]}
-        </div>
+  const uploadOne = (file, onProgress) => {
+    const fd = new FormData();
+    fd.append('file', file, file.name);
+    if (mode === 'replace' && replaceIds.length) fd.append('replace_ids', replaceIds.join(','));
+    return api.post(`/intake/${caseId}/upload/${slot.slot_key}`, fd, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 0,
+      onUploadProgress: (e) => { if (e.total) onProgress(Math.min(99, Math.round((e.loaded / e.total) * 100))); },
+    });
+  };
 
-        {/* 内容 */}
+  const close = () => { setMode(null); setReplaceIds([]); onChanged(); };
+
+  return (
+    <div className={`rounded-xl border p-4 transition-all ${has ? 'bg-green-50 border-green-200' : 'bg-white border-gray-200'}`}>
+      <div className="flex items-start gap-3">
+        <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-lg shrink-0 ${has ? 'bg-green-100' : 'bg-gray-100'}`}>
+          {has ? '✅' : SLOT_ICONS[slot.slot_key]}
+        </div>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <span className="font-semibold text-gray-800">{slot.slot_key}. {slot.label_cn}</span>
-            {slot.required && (
-              <span className="text-xs px-1.5 py-0.5 bg-red-50 text-red-600 rounded">必需</span>
-            )}
+            {slot.required && <span className="text-xs px-1.5 py-0.5 bg-red-50 text-red-600 rounded">必需</span>}
+            {has && <span className="text-xs text-green-700">{files.length} 个文件</span>}
           </div>
           <p className="text-xs text-gray-500 mt-0.5">{slot.desc_cn}</p>
-          {uploaded && slot.file_name && (
-            <div className="flex items-center gap-1 mt-1.5">
-              <FileText className="w-3.5 h-3.5 text-green-600" />
-              <span className="text-xs text-green-700 truncate">{slot.file_name}</span>
-            </div>
-          )}
-          <p className="text-xs text-gray-400 mt-1 font-mono">
-            文件名：<span className="text-[#1B3A6B] font-semibold">{slot.slot_key}-报关号-{slot.label_cn}.pdf</span>（请合并为一个PDF上传）
-          </p>
         </div>
+      </div>
 
-        {/* 操作 */}
-        <div className="shrink-0 flex items-center gap-2">
-          {uploaded && slot.file_url && (
-            <>
-              <button
-                type="button"
-                onClick={() => openSignedLink(`/intake/${caseId}/files/${slot.slot_key}/link`)}
-                className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100"
-              >
-                <Eye className="w-3.5 h-3.5" />
-                查看
-              </button>
-              {/* 下载：按上传时的原文件名保存 */}
-              <button
-                type="button"
-                onClick={() => openSignedLink(`/intake/${caseId}/files/${slot.slot_key}/link?download=true`)}
-                className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100"
-              >
-                <Download className="w-3.5 h-3.5" />
-                下载
-              </button>
-            </>
+      {has && (
+        <ul className="mt-2 divide-y divide-green-100">
+          {files.map((f) => <SlotFile key={f.id} f={f} caseId={caseId} />)}
+        </ul>
+      )}
+
+      {replacedFiles.length > 0 && (
+        <div className="mt-2">
+          <button type="button" onClick={() => setShowHistory((v) => !v)}
+                  className="text-xs text-gray-500 inline-flex items-center gap-1">
+            <History className="w-3.5 h-3.5" />已替换的文件（{replacedFiles.length}）{showHistory ? '收起' : '展开'}
+          </button>
+          {showHistory && (
+            <ul className="mt-1 divide-y divide-gray-100">
+              {replacedFiles.map((f) => <SlotFile key={f.id} f={f} caseId={caseId} replaced />)}
+            </ul>
           )}
-
-          <input type="file" id={inputId} className="hidden"
-            accept=".pdf,.jpg,.jpeg,.png" onChange={handleChange} />
-          <label htmlFor={inputId}
-            className={`cursor-pointer inline-flex items-center gap-1 px-3 py-1.5 text-xs rounded-lg transition-colors ${
-              uploading
-                ? 'opacity-60 pointer-events-none bg-gray-100 text-gray-400'
-                : uploaded
-                  ? 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  : 'bg-[#1B3A6B] text-white hover:bg-[#152d54]'
-            }`}
-          >
-            {uploading
-              ? <><Loader2 className="w-3.5 h-3.5 animate-spin" />上传中...</>
-              : uploaded
-                ? <><RotateCcw className="w-3.5 h-3.5" />重传</>
-                : <><Upload className="w-3.5 h-3.5" />上传</>
-            }
-          </label>
         </div>
+      )}
+
+      <div className="mt-3">
+        {mode && limits ? (
+          <div className="space-y-2">
+            {mode === 'replace' && (
+              <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                重传中：新文件上传成功后，原来的 {replaceIds.length} 个文件标记为「已替换」。
+              </p>
+            )}
+            <MultiFileUploader limits={limits} uploadOne={uploadOne} onAllDone={close}
+                               pickLabel={mode === 'replace' ? '选择新文件' : '选择文件'} />
+            <button type="button" onClick={close} className="text-xs text-gray-500">收起</button>
+          </div>
+        ) : has ? (
+          <div className="flex gap-2">
+            <button type="button" onClick={() => setMode('append')}
+                    className="inline-flex items-center gap-1 px-3 py-1.5 text-xs rounded-lg bg-[#1B3A6B] text-white hover:bg-[#152d54]">
+              <Plus className="w-3.5 h-3.5" />追加文件
+            </button>
+            <button type="button" onClick={startReplace}
+                    className="inline-flex items-center gap-1 px-3 py-1.5 text-xs rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200">
+              <RotateCcw className="w-3.5 h-3.5" />重传
+            </button>
+          </div>
+        ) : (
+          <button type="button" onClick={() => setMode('append')} disabled={!limits}
+                  className="inline-flex items-center gap-1 px-3 py-1.5 text-xs rounded-lg bg-[#1B3A6B] text-white hover:bg-[#152d54] disabled:opacity-50">
+            <Plus className="w-3.5 h-3.5" />上传文件
+          </button>
+        )}
       </div>
     </div>
   );
