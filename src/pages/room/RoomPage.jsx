@@ -12,6 +12,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import { Clock, Download, Eye, FileText, Loader2, LogOut } from 'lucide-react';
 import MultiFileUploader from '../../components/MultiFileUploader';
+import { absoluteFileUrl, isViewable } from '../../utils/openSignedLink';
 import { useAuth } from '../../context/AuthContext';
 import { roomAPI, errorText, isWeChat } from '../../services/roomApi';
 import { RoomShell } from './RoomAuth';
@@ -37,13 +38,13 @@ const daysLeft = (v) => {
 };
 const leftText = (n) => (n < 0 ? `已过期 ${-n} 天` : n === 0 ? '今天到期' : `还剩 ${n} 天`);
 
-// 打开本人文件：微信里用当前页跳转（新窗口常被拦），其他浏览器新开一页
+// 打开本人文件：微信里一律当前页跳转（新窗口常被拦）；其他浏览器查看新开一页、下载在当前页
+// 链接由后端转发并带原文件名；只有 PDF / 图片提供「查看」
 async function openFile(fileId, download) {
-  const wechat = isWeChat();
-  const w = wechat ? null : window.open('', '_blank');
+  const w = isWeChat() || download ? null : window.open('', '_blank');
   if (w) w.opener = null;
   try {
-    const url = await roomAPI.fileLink(fileId, download);
+    const url = absoluteFileUrl(await roomAPI.fileLink(fileId, download));
     if (w) w.location.href = url; else window.location.href = url;
   } catch (ex) {
     if (w) w.close();
@@ -126,8 +127,10 @@ function SubmittedGroup({ group, caseId, upload, onChanged }) {
             <p className="text-sm text-gray-800 break-all">{f.file_name}</p>
             <div className="mt-1 flex items-center gap-3">
               <span className="text-xs text-gray-400 flex-1">上传于 {fmtTime(f.uploaded_at)}</span>
-              <button type="button" onClick={() => openFile(f.id, false)}
-                      className="text-xs text-gtc-navy flex items-center gap-1 py-1"><Eye className="w-3.5 h-3.5" />查看</button>
+              {isViewable(f.file_name) && (
+                <button type="button" onClick={() => openFile(f.id, false)}
+                        className="text-xs text-gtc-navy flex items-center gap-1 py-1"><Eye className="w-3.5 h-3.5" />查看</button>
+              )}
               <button type="button" onClick={() => openFile(f.id, true)}
                       className="text-xs text-gtc-navy flex items-center gap-1 py-1"><Download className="w-3.5 h-3.5" />下载</button>
             </div>

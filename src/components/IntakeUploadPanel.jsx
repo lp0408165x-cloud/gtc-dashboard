@@ -4,7 +4,7 @@ import {
 } from 'lucide-react';
 
 import api from '../services/api';
-import { openSignedLink } from '../utils/openSignedLink';
+import { openSignedLink, isViewable } from '../utils/openSignedLink';
 import { detailText } from '../utils/apiError';
 import MultiFileUploader, { fmtSize } from './MultiFileUploader';
 
@@ -191,10 +191,13 @@ function SlotFile({ f, caseId, replaced = false }) {
           {replaced && ` · ${fmtWhen(f.replaced_at)} 被替换${f.replaced_by ? `（${f.replaced_by}）` : ''}`}
         </p>
       </div>
-      <button type="button" onClick={() => openSignedLink(`/intake/${caseId}/file/${f.id}/link`)}
-              className="shrink-0 inline-flex items-center gap-1 px-2 py-1 text-xs text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100">
-        <Eye className="w-3.5 h-3.5" />查看
-      </button>
+      {/* 查看：只对 PDF / 图片；Word、Excel、ZIP 等只提供下载 */}
+      {isViewable(f.file_name) && (
+        <button type="button" onClick={() => openSignedLink(`/intake/${caseId}/file/${f.id}/link`)}
+                className="shrink-0 inline-flex items-center gap-1 px-2 py-1 text-xs text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100">
+          <Eye className="w-3.5 h-3.5" />查看
+        </button>
+      )}
       {/* 下载：按上传时的原文件名保存 */}
       <button type="button" onClick={() => openSignedLink(`/intake/${caseId}/file/${f.id}/link?download=true`)}
               className="shrink-0 inline-flex items-center gap-1 px-2 py-1 text-xs text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100">

@@ -7,7 +7,7 @@ import {
 import { filesAPI } from '../services/api';
 import IntakeUploadPanel from './IntakeUploadPanel';
 import { API_BASE as API_URL } from '../config/line';
-import { openSignedLink } from '../utils/openSignedLink';
+import { openSignedLink, isViewable } from '../utils/openSignedLink';
 import { detailText, responseErrorText, UPLOAD_FAILED } from '../utils/apiError';
 
 const STATUS_CONFIG = {
@@ -464,10 +464,13 @@ function SlotRow({ slot, uploading, onUpload }) {
             {/* 已上传、已验证的都能查看和下载 */}
             {(slot.status === 'uploaded' || slot.status === 'verified') && slot.file_url && (
               <>
-                <button type="button" onClick={() => openSignedLink(`/evidence/slots/${slot.id}/link`)}
-                  className="inline-flex items-center gap-1 px-3 py-1.5 text-xs text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100">
-                  <Eye className="w-3.5 h-3.5" />查看
-                </button>
+                {/* 查看：只对 PDF / 图片；Word、Excel、ZIP 等只提供下载 */}
+                {isViewable(slot.file_name) && (
+                  <button type="button" onClick={() => openSignedLink(`/evidence/slots/${slot.id}/link`)}
+                    className="inline-flex items-center gap-1 px-3 py-1.5 text-xs text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100">
+                    <Eye className="w-3.5 h-3.5" />查看
+                  </button>
+                )}
                 {/* 下载：按上传时的原文件名保存 */}
                 <button type="button" onClick={() => openSignedLink(`/evidence/slots/${slot.id}/link?download=true`)}
                   className="inline-flex items-center gap-1 px-3 py-1.5 text-xs text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100">

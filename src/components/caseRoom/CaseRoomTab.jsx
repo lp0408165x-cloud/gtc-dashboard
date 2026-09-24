@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { caseRoomStaffAPI as api, dateToDue, dueToDate, blobErrorText } from '../../services/caseRoomStaffApi';
 import { detailText } from '../../utils/apiError';
-import { openSignedLink } from '../../utils/openSignedLink';
+import { openSignedLink, isViewable } from '../../utils/openSignedLink';
 import { fmtSize } from '../MultiFileUploader';
 
 const ROLES = [
@@ -373,7 +373,9 @@ function TaskCard({ caseId, task, memberName, canUp, canDown, onMove, onEdit, on
                 <p className="text-xs text-gray-800 break-all">{f.file_name}</p>
                 <p className="text-[11px] text-gray-400">{fmtSize(f.file_size)} · {fmtWhen(f.uploaded_at)}{f.uploaded_by && ` · ${f.uploaded_by}`}</p>
               </div>
-              <button onClick={() => openSignedLink(`/cases/${caseId}/files/${f.id}/link`)} className="text-xs text-blue-600 inline-flex items-center gap-0.5"><Eye className="w-3.5 h-3.5" />查看</button>
+              {isViewable(f.file_name) && (
+                <button onClick={() => openSignedLink(`/cases/${caseId}/files/${f.id}/link`)} className="text-xs text-blue-600 inline-flex items-center gap-0.5"><Eye className="w-3.5 h-3.5" />查看</button>
+              )}
               <button onClick={() => openSignedLink(`/cases/${caseId}/files/${f.id}/link?download=true`)} className="text-xs text-blue-600 inline-flex items-center gap-0.5"><Download className="w-3.5 h-3.5" />下载</button>
             </li>
           ))}
