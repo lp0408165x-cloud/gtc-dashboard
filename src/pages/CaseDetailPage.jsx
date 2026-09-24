@@ -6,6 +6,7 @@ import { isInternal } from '../utils/roles';
 import { detailText, UPLOAD_FAILED } from '../utils/apiError';
 import GenerateReportButton from '../components/GenerateReportButton';
 import AgentAnalyzeButton from '../components/AgentAnalyzeButton';
+import CaseRoomTab from '../components/caseRoom/CaseRoomTab';
 import EvidenceUploadPanel from '../components/EvidenceUploadPanel';
 import WorkflowPanel from '../components/WorkflowPanel';
 import CaseInfoEditor from '../components/CaseInfoEditor';
@@ -1135,7 +1136,7 @@ const CaseDetailPage = () => {
 
       <div className="bg-white rounded-xl shadow-sm">
         <div className="border-b border-gray-200 flex gap-6 px-6 overflow-x-auto">
-          {['info', 'files', 'ai', 'human', 'workflow', 'submission'].map((tab) => (
+          {['info', 'files', 'ai', 'human', 'workflow', 'submission', ...(isInternal(user) ? ['room'] : [])].map((tab) => (
             <button key={tab} onClick={() => setActiveTab(tab)}
               className={`py-4 border-b-2 font-medium whitespace-nowrap ${activeTab === tab ? 'border-gtc-gold text-gtc-navy' : 'border-transparent text-gray-500'}`}>
               {tab === 'info' && '案件信息'}
@@ -1144,6 +1145,7 @@ const CaseDetailPage = () => {
               {tab === 'human' && '🧑‍💼 专家介入'}
               {tab === 'workflow' && '📋 工作流'}
               {tab === 'submission' && '📤 提交记录'}
+              {tab === 'room' && '案件室'}
             </button>
           ))}
         </div>
@@ -1384,6 +1386,8 @@ const CaseDetailPage = () => {
           )}
 
           {activeTab === 'human' && renderHumanTab()}
+          {/* 案件室：成员、任务、验收（仅内部角色） */}
+          {activeTab === 'room' && isInternal(user) && <CaseRoomTab caseId={parseInt(id)} />}
           {activeTab === 'workflow' && (
            <WorkflowPanel
              caseId={parseInt(id)}
