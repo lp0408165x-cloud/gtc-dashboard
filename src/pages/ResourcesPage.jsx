@@ -8,6 +8,8 @@ import {
 } from 'lucide-react';
 import { resourcesAPI, subscriptionAPI } from '../services/api';
 import api from '../services/api';
+import { useAuth } from '../context/AuthContext';
+import { isInternal } from '../utils/roles';
 
 const CATEGORIES = [
   { key: 'all',      label: '全部',     icon: <Globe className="w-3.5 h-3.5" /> },
@@ -41,6 +43,7 @@ const isNew = (dateStr) => {
 };
 
 export default function ResourcesPage() {
+  const { user } = useAuth();
   const [resources, setResources]       = useState([]);
   const [loading, setLoading]           = useState(true);
   const [error, setError]               = useState(null);
@@ -201,7 +204,8 @@ export default function ResourcesPage() {
         </div>
       )}
 
-      {!loading && resources.some((r) => !r.accessible) && (
+      {/* 「查看套餐」指向订阅页，订阅页已对客户隐藏：横幅只给内部角色看 */}
+      {!loading && isInternal(user) && resources.some((r) => !r.accessible) && (
         <UpgradeBanner lockedCount={resources.filter((r) => !r.accessible).length} />
       )}
 

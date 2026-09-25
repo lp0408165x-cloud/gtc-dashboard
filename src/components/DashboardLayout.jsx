@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Outlet, Navigate, useNavigate } from 'react-router-dom';
 import { PageErrorBoundary } from './ErrorBoundary';
 import { useAuth } from '../context/AuthContext';
-import { isParticipant } from '../utils/roles';
+import { isParticipant, isInternal } from '../utils/roles';
 import Sidebar from './Sidebar';
 import { Bell, Search, Settings, LogOut, ChevronDown } from 'lucide-react';
 import AIChatWidget from './AIChatWidget';
@@ -128,7 +128,8 @@ const DashboardLayout = () => {
           <PageErrorBoundary><Outlet /></PageErrorBoundary>
         </main>
       </div>
-      <AIChatWidget />
+      {/* 在线咨询：只对内部角色显示（后端 /chat 同样只放行内部角色） */}
+      {isInternal(user) && <AIChatWidget />}
     </div>
   );
 };

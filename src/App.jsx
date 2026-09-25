@@ -82,7 +82,7 @@ function App() {
           <Route path="analytics" element={<AnalyticsPage />} />
           <Route path="users" element={<UsersPage />} />
           <Route path="settings" element={<SettingsPage />} />
-          <Route path="subscription" element={<SubscriptionPage />} />   {/* v8 新增 */}
+          <Route path="subscription" element={<InternalOnly><SubscriptionPage /></InternalOnly>} />   {/* 平台不再售卖订阅：客户不可见，侧边栏无入口 */}
           <Route path="resources" element={<ResourcesPage />} />         {/* v8 新增 */}
           <Route path="training" element={<TrainingCenter />} />
           <Route path="training/courses/:courseId" element={<CourseDetail />} />

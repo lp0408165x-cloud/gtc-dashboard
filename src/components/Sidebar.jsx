@@ -4,7 +4,7 @@ import { ShieldAlert, AlertTriangle } from 'lucide-react';
 import {
   Shield, LayoutDashboard, FolderOpen, FilePlus, BarChart3,
   Settings, LogOut, Users, ChevronLeft, ChevronRight, Package,
-  CreditCard, BookOpen, GraduationCap, Calculator,FileSearch,Sun, Ship,
+  BookOpen, GraduationCap, Calculator,FileSearch,Sun, Ship,
 } from 'lucide-react';
 import { useState } from 'react';
 import { isInternal } from '../utils/roles';
@@ -34,7 +34,6 @@ const Sidebar = () => {
     { path: '/shipments',           icon: Ship,            label: '货件通道',  adminOnly: false, badge: 'NEW' },
     { path: '/analytics',           icon: BarChart3,       label: '数据分析',  adminOnly: false },
     { path: '/resources',           icon: BookOpen,        label: '资料库',    adminOnly: false },
-    { path: '/subscription',        icon: CreditCard,      label: '订阅管理',  adminOnly: false },
     { path: '/training',            icon: GraduationCap,   label: '培训中心',  adminOnly: false, end: true },
     // ── 仅管理员可见 ──
     { path: '/training/admin',      icon: GraduationCap,   label: '培训管理',  adminOnly: true },
