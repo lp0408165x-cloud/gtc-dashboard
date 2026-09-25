@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { casesAPI, aiAPI } from '../services/api';
+import { isInternal } from '../utils/roles';
 import DeadlineAlerts from '../components/DeadlineAlerts';
 import {
   FolderOpen,
@@ -13,7 +14,6 @@ import {
   Shield,
   ArrowRight,
   Sparkles,
-  Search,
   FileCheck,
   Phone,
   MessageCircle,
@@ -44,8 +44,10 @@ const DashboardPage = () => {
         setStats({ total, pending, reviewing, approved });
         setRecentCases(cases.slice(0, 5));
 
-        const status = await aiAPI.status();
-        setAiStatus(status);
+        // /ai/status 只对内部角色开放（含模型名与调用统计）
+        if (isInternal(user)) {
+          setAiStatus(await aiAPI.status());
+        }
       } catch (error) {
         console.error('Failed to fetch dashboard data:', error);
       } finally {
@@ -218,18 +220,6 @@ const DashboardPage = () => {
             </div>
             
             <div className="p-6 space-y-6">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center">
-                  <Search className="w-6 h-6 text-blue-500" />
-                </div>
-                <div className="flex-1">
-                  <p className="font-medium text-gtc-navy">文档分析服务</p>
-                  <p className="text-sm text-gray-500">扫描与分类引擎</p>
-                </div>
-                <div className={`w-3 h-3 rounded-full ${
-                  aiStatus?.gemini?.configured === true ? 'bg-green-500' : 'bg-gray-300'
-                }`}></div>
-              </div>
 
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 bg-purple-50 rounded-xl flex items-center justify-center">
