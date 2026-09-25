@@ -13,6 +13,7 @@ import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import { Clock, Download, Eye, FileText, Loader2, LogOut } from 'lucide-react';
 import MultiFileUploader from '../../components/MultiFileUploader';
 import { absoluteFileUrl, isViewable } from '../../utils/openSignedLink';
+import { guidePageUrl } from '../../utils/dlGuide';
 import { useAuth } from '../../context/AuthContext';
 import { roomAPI, errorText, isWeChat } from '../../services/roomApi';
 import { RoomShell } from './RoomAuth';
@@ -40,7 +41,16 @@ const leftText = (n) => (n < 0 ? `已过期 ${-n} 天` : n === 0 ? '今天到期
 
 // 打开本人文件：微信里一律当前页跳转（新窗口常被拦）；其他浏览器查看新开一页、下载在当前页
 // 链接由后端转发并带原文件名；只有 PDF / 图片提供「查看」
-async function openFile(fileId, download) {
+async function openFile(fileId, download, fileName) {
+  // 微信里下载非预览格式（Word / Excel / ZIP 等）：跳引导页，提示换到浏览器打开
+  if (download && isWeChat() && !isViewable(fileName)) {
+    try {
+      window.location.href = guidePageUrl(await roomAPI.fileLink(fileId, true, true));
+    } catch (ex) {
+      alert(errorText(ex, '打开文件失败，请稍后重试'));
+    }
+    return;
+  }
   const w = isWeChat() || download ? null : window.open('', '_blank');
   if (w) w.opener = null;
   try {
@@ -131,7 +141,7 @@ function SubmittedGroup({ group, caseId, upload, onChanged }) {
                 <button type="button" onClick={() => openFile(f.id, false)}
                         className="text-xs text-gtc-navy flex items-center gap-1 py-1"><Eye className="w-3.5 h-3.5" />查看</button>
               )}
-              <button type="button" onClick={() => openFile(f.id, true)}
+              <button type="button" onClick={() => openFile(f.id, true, f.file_name)}
                       className="text-xs text-gtc-navy flex items-center gap-1 py-1"><Download className="w-3.5 h-3.5" />下载</button>
             </div>
           </li>

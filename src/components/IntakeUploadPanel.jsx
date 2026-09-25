@@ -199,7 +199,7 @@ function SlotFile({ f, caseId, replaced = false }) {
         </button>
       )}
       {/* 下载：按上传时的原文件名保存 */}
-      <button type="button" onClick={() => openSignedLink(`/intake/${caseId}/file/${f.id}/link?download=true`)}
+      <button type="button" onClick={() => openSignedLink(`/intake/${caseId}/file/${f.id}/link?download=true`, { fileName: f.file_name })}
               className="shrink-0 inline-flex items-center gap-1 px-2 py-1 text-xs text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100">
         <Download className="w-3.5 h-3.5" />下载
       </button>

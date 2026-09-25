@@ -31,6 +31,7 @@ import SolarTariffPage from './pages/SolarTariffPage';
 import ShipmentsPage from './pages/ShipmentsPage';
 import { InviteLoginPage, RoomLoginPage } from './pages/room/RoomAuth';
 import RoomPage from './pages/room/RoomPage';
+import DlGuidePage from './pages/room/DlGuidePage';
 import { PageErrorBoundary } from './components/ErrorBoundary';
 import { titleFor } from './utils/pageTitle';
 import { useAuth } from './context/AuthContext';
@@ -66,6 +67,7 @@ function App() {
         {/* 案件室：参与人免密登录后只看得到这里，没有侧边栏 */}
         <Route path="/r/:token" element={<InviteLoginPage />} />
         <Route path="/room-login" element={<RoomLoginPage />} />
+        <Route path="/room/dl-guide" element={<DlGuidePage />} />   {/* 微信下载引导，不需要登录 */}
         <Route path="/room" element={<RoomPage />} />
         <Route path="/room/:caseId" element={<RoomPage />} />
 

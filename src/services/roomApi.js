@@ -31,8 +31,11 @@ export const roomAPI = {
     }).then((r) => r.data);
   },
   // 本人文件的签名链接
-  fileLink: (fileId, download = false) =>
-    api.get(`/room/files/${fileId}/link`, { params: download ? { download: true } : {} }).then((r) => r.data.url),
+  // guide：微信下载引导用，后端签 10 分钟的链接
+  fileLink: (fileId, download = false, guide = false) =>
+    api.get(`/room/files/${fileId}/link`, {
+      params: { ...(download ? { download: true } : {}), ...(guide ? { guide: true } : {}) },
+    }).then((r) => r.data.url),
 };
 
 // 后端错误 → 可显示的文字（字符串、422 数组、{message} 对象都能处理）

@@ -8,6 +8,7 @@
 // ============================================================
 import api from '../services/api';
 import { API_BASE } from '../config/line';
+import { guidePageUrl, isWeChat } from './dlGuide';
 
 // 后端返回以 / 开头的相对路径：拼上当前线路的 API 地址（中国线路经香港中转）
 export const absoluteFileUrl = (url) => (url && url.startsWith('/') ? `${API_BASE}${url}` : url);
@@ -19,8 +20,19 @@ export const isViewable = (name) => {
   return i > 0 && VIEWABLE.includes(name.slice(i + 1).toLowerCase());
 };
 
-export async function openSignedLink(apiPath) {
+// fileName：下载时传入。微信里下载非预览格式（Word / Excel / ZIP 等）改走引导页，链接按 guide=true 签发（10 分钟）
+export async function openSignedLink(apiPath, { fileName } = {}) {
   const download = /[?&]download=true\b/.test(apiPath);
+  if (download && isWeChat() && !isViewable(fileName)) {
+    try {
+      const { data } = await api.get(`${apiPath}&guide=true`);
+      window.location.href = guidePageUrl(data.url);
+    } catch (e) {
+      const detail = e.response?.data?.detail;
+      alert(typeof detail === 'string' ? detail : '打开文件失败，请稍后重试');
+    }
+    return;
+  }
   const w = download ? null : window.open('', '_blank');
   if (w) w.opener = null;
   try {

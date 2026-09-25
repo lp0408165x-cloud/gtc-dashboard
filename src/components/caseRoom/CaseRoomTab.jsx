@@ -376,7 +376,7 @@ function TaskCard({ caseId, task, memberName, canUp, canDown, onMove, onEdit, on
               {isViewable(f.file_name) && (
                 <button onClick={() => openSignedLink(`/cases/${caseId}/files/${f.id}/link`)} className="text-xs text-blue-600 inline-flex items-center gap-0.5"><Eye className="w-3.5 h-3.5" />查看</button>
               )}
-              <button onClick={() => openSignedLink(`/cases/${caseId}/files/${f.id}/link?download=true`)} className="text-xs text-blue-600 inline-flex items-center gap-0.5"><Download className="w-3.5 h-3.5" />下载</button>
+              <button onClick={() => openSignedLink(`/cases/${caseId}/files/${f.id}/link?download=true`, { fileName: f.file_name })} className="text-xs text-blue-600 inline-flex items-center gap-0.5"><Download className="w-3.5 h-3.5" />下载</button>
             </li>
           ))}
         </ul>

@@ -475,7 +475,7 @@ function SlotRow({ slot, uploading, onUpload }) {
                   </button>
                 )}
                 {/* 下载：按上传时的原文件名保存 */}
-                <button type="button" onClick={() => openSignedLink(`/evidence/slots/${slot.id}/link?download=true`)}
+                <button type="button" onClick={() => openSignedLink(`/evidence/slots/${slot.id}/link?download=true`, { fileName: slot.file_name })}
                   className="inline-flex items-center gap-1 px-3 py-1.5 text-xs text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100">
                   <Download className="w-3.5 h-3.5" />下载
                 </button>
