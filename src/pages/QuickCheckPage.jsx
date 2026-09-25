@@ -4,6 +4,7 @@ import {
   CheckCircle2, AlertTriangle, HelpCircle, MinusCircle, FileText, Code,
 } from 'lucide-react';
 import { quickCheckAPI, filesAPI, toolsAPI } from '../services/api';
+import { sizeError } from '../utils/uploadLimits';
 
 // 四色标记映射：一致 / 不一致 / 待核实 / 不适用
 const MARK_CONFIG = {
@@ -167,6 +168,8 @@ const QuickCheckPage = () => {
       const update = (patch) =>
         setFiles((prev) => prev.map((x) => (x.id === f.id ? { ...x, ...patch } : x)));
 
+      const tooBig = sizeError(f.file);        // 50 MB 上限：这个文件标错，其余照常处理
+      if (tooBig) { update({ status: 'error', error: tooBig }); continue; }
       try {
         update({ status: 'processing', step: 0, error: '' });
         const up = await filesAPI.upload(quickCaseId, f.file, 'document');

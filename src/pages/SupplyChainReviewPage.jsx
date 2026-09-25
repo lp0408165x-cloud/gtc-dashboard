@@ -23,6 +23,7 @@ import { supplyChainAPI } from '../services/supplyChainApi';
 import { useAuth } from '../context/AuthContext';
 import { isInternal } from '../utils/roles';
 import { detailText, UPLOAD_FAILED } from '../utils/apiError';
+import { sizeError } from '../utils/uploadLimits';
 
 // 任务类型图标映射
 const taskIcons = {
@@ -124,6 +125,9 @@ const SupplyChainReviewPage = () => {
   const handleFileUpload = async (e) => {
     const files = Array.from(e.target.files);
     if (!files.length || !currentReview) return;
+    // 50 MB 上限：有超限或空文件时整批不传，列出是哪几个
+    const bad = files.map(sizeError).filter(Boolean);
+    if (bad.length) { setError(bad.join('；')); e.target.value = ''; return; }
 
     setLoading(true);
     setError(null);

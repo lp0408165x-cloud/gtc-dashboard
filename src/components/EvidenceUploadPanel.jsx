@@ -9,6 +9,7 @@ import IntakeUploadPanel from './IntakeUploadPanel';
 import { API_BASE as API_URL } from '../config/line';
 import { openSignedLink, isViewable } from '../utils/openSignedLink';
 import { detailText, responseErrorText, UPLOAD_FAILED } from '../utils/apiError';
+import { sizeError } from '../utils/uploadLimits';
 
 const STATUS_CONFIG = {
   empty:    { label: '待上传', color: 'text-gray-400',  bg: 'bg-gray-50',  icon: Clock },
@@ -159,6 +160,8 @@ export default function EvidenceUploadPanel({ caseId, caseType, visibleSlots, in
   useEffect(() => { if (caseId) fetchSlots(); }, [caseId, fetchSlots]);
 
   const handleFileUpload = async (slotId, evidenceCode, file) => {
+    const tooBig = sizeError(file);          // 50 MB 上限，前端先拦（选择与拖拽都经过这里）
+    if (tooBig) { alert(tooBig); return; }
     setUploadingSlot(slotId);
     setValidationAlert(null);
     try {

@@ -4,6 +4,7 @@ import { casesAPI, filesAPI, aiAPI, toolsAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { isInternal } from '../utils/roles';
 import { detailText, UPLOAD_FAILED } from '../utils/apiError';
+import { sizeError } from '../utils/uploadLimits';
 import GenerateReportButton from '../components/GenerateReportButton';
 import AgentAnalyzeButton from '../components/AgentAnalyzeButton';
 import CaseRoomTab from '../components/caseRoom/CaseRoomTab';
@@ -282,6 +283,8 @@ const CaseDetailPage = () => {
   const handleFileUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
+    const tooBig = sizeError(file);          // 50 MB 上限，前端先拦
+    if (tooBig) { alert(tooBig); e.target.value = ''; return; }
     setUploading(true);
     try {
       await filesAPI.upload(id, file);
@@ -413,6 +416,8 @@ const CaseDetailPage = () => {
     setIsDragging(false);
     const file = e.dataTransfer.files[0];
     if (!file) return;
+    const tooBig = sizeError(file);
+    if (tooBig) { alert(tooBig); return; }
     setUploading(true);
     try {
       await filesAPI.upload(id, file);

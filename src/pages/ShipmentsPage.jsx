@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { shipmentsAPI } from '../services/shipmentsApi';
 import { filesAPI, toolsAPI } from '../services/api';
+import { sizeError } from '../utils/uploadLimits';
 import ErrorBoundary from '../components/ErrorBoundary';
 
 // ══════════════════════════════════════════════════════════
@@ -379,6 +380,8 @@ function DocsAndCheck({ shipmentId, documents, onChanged, isGtc }) {
       if (f.status === 'done') continue;
       const patch = (p) =>
         setFiles((prev) => prev.map((x) => (x.key === f.key ? { ...x, ...p } : x)));
+      const tooBig = sizeError(f.file);        // 50 MB 上限：这个文件标错，其余照常处理
+      if (tooBig) { patch({ status: 'error', error: tooBig }); continue; }
       try {
         patch({ status: 'processing', step: 0, error: '' });
         const up = await filesAPI.upload(caseId, f.file, 'document');
