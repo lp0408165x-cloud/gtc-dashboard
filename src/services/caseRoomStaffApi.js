@@ -24,6 +24,15 @@ export const caseRoomStaffAPI = {
   returnTask: (caseId, taskId, reason) =>
     api.post(`/cases/${caseId}/tasks/${taskId}/return`, { reason }).then((r) => r.data),
 
+  // 期限（1e）：截止输入二选一 due_date（YYYY-MM-DD，美东当天 23:59:59）或 due_at
+  deadlines: (caseId) => api.get(`/cases/${caseId}/deadlines`).then((r) => r.data),
+  createDeadline: (caseId, body) => api.post(`/cases/${caseId}/deadlines`, body).then((r) => r.data),
+  updateDeadline: (caseId, id, body) => api.patch(`/cases/${caseId}/deadlines/${id}`, body).then((r) => r.data),
+  closeDeadline: (caseId, id, status, note) =>
+    api.post(`/cases/${caseId}/deadlines/${id}/close`, { status, note: note || null }).then((r) => r.data),
+  extendDeadline: (caseId, id, dueDate, note) =>
+    api.post(`/cases/${caseId}/deadlines/${id}/extend`, { due_date: dueDate, note: note || null }).then((r) => r.data),
+
   // 文件：本案全部文件打包（带 token，所以走 axios 取 blob）
   zip: async (caseId) => {
     const r = await api.get(`/cases/${caseId}/files.zip`, { responseType: 'blob', timeout: 0 });

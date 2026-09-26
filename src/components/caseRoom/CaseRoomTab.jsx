@@ -1,6 +1,7 @@
 // ============================================================
 // 案件详情 · 「案件室」标签（仅内部角色）
 //
+//   期限：新建、编辑、延期、关闭（DeadlinesSection）
 //   成员：列表、邀请（弹窗填邮箱 / 身份 / 称呼 → 复制链接）、移出、生成一次性登录码（邮件收不到时用）
 //   任务：按状态分组；新建、编辑、上下移动排序、取消 / 恢复
 //   批量建任务：每行「标题 | 说明 | 格式要求 | 截止日」，先预览再确认（也认 Markdown 表格）
@@ -16,6 +17,7 @@ import { caseRoomStaffAPI as api, dateToDue, dueToDate, blobErrorText } from '..
 import { detailText } from '../../utils/apiError';
 import { openSignedLink, isViewable } from '../../utils/openSignedLink';
 import { fmtSize } from '../MultiFileUploader';
+import DeadlinesSection from './DeadlinesSection';
 
 const ROLES = [
   ['client', '客户'], ['forwarder', '货代'], ['broker', '报关行'], ['factory', '工厂'], ['other', '其他'],
@@ -473,6 +475,7 @@ export default function CaseRoomTab({ caseId }) {
 
   return (
     <div className="space-y-5">
+      <DeadlinesSection caseId={caseId} />
       <MembersSection caseId={caseId} members={members} showRevoked={showRevoked} setShowRevoked={setShowRevoked} reload={loadMembers} />
 
       <section className="bg-white rounded-xl border border-gray-200">
