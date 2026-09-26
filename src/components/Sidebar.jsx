@@ -3,14 +3,17 @@ import { useAuth } from '../context/AuthContext';
 import { ShieldAlert, AlertTriangle } from 'lucide-react';
 import {
   Shield, LayoutDashboard, FolderOpen, FilePlus, BarChart3,
-  Settings, LogOut, Users, ChevronLeft, ChevronRight, Package,
+  Settings, LogOut, Users, ChevronLeft, ChevronRight, Package, X,
   BookOpen, GraduationCap, Calculator,FileSearch,Sun, Ship,
 } from 'lucide-react';
 import { useState } from 'react';
 import { isInternal } from '../utils/roles';
 
-const Sidebar = () => {
+// 窄屏（< 768px，Tailwind md 以下）：抽屉式，默认收起，由顶栏汉堡按钮打开（mobileOpen / onMobileClose 由 DashboardLayout 管）
+// 宽屏：常驻，可折叠成图标栏（collapsed）
+const Sidebar = ({ mobileOpen = false, onMobileClose = () => {} }) => {
   const [collapsed, setCollapsed] = useState(false);
+  const showLabels = !collapsed || mobileOpen;       // 抽屉打开时总是显示文字
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const isAdmin = user?.role === 'admin';
@@ -44,15 +47,22 @@ const Sidebar = () => {
   const navItems = allNavItems.filter(item => (!item.adminOnly || isAdmin) && (!item.internalOnly || isInternal(user)));
 
   return (
-    <aside className={`bg-gtc-navy h-screen sticky top-0 transition-all duration-300 flex flex-col ${collapsed ? 'w-20' : 'w-64'}`}>
+    <>
+    {mobileOpen && <div className="fixed inset-0 bg-black/40 z-30 md:hidden" onClick={onMobileClose} aria-hidden="true" />}
+    <aside className={`bg-gtc-navy h-screen flex flex-col transition-all duration-300
+      fixed inset-y-0 left-0 z-40 w-64 ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}
+      md:sticky md:top-0 md:translate-x-0 md:z-auto ${collapsed ? 'md:w-20' : 'md:w-64'}`}>
       {/* Logo */}
       <div className="p-6 flex items-center justify-between border-b border-white/10">
         <div className="flex items-center gap-3">
           <Shield className="w-8 h-8 text-gtc-gold flex-shrink-0" />
-          {!collapsed && <span className="text-xl font-display font-bold text-white">GTC-C</span>}
+          {showLabels && <span className="text-xl font-display font-bold text-white">GTC-C</span>}
         </div>
-        <button onClick={() => setCollapsed(!collapsed)} className="text-gray-400 hover:text-white transition-colors">
+        <button onClick={() => setCollapsed(!collapsed)} className="hidden md:block text-gray-400 hover:text-white transition-colors">
           {collapsed ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
+        </button>
+        <button onClick={onMobileClose} className="md:hidden text-gray-400 hover:text-white transition-colors" aria-label="收起菜单">
+          <X className="w-5 h-5" />
         </button>
       </div>
 
@@ -64,6 +74,7 @@ const Sidebar = () => {
               <NavLink
                 to={item.path}
                 end={item.path === '/cases' || item.end}
+                onClick={onMobileClose}
                 className={({ isActive }) =>
                   `flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
                     isActive ? 'bg-gtc-gold text-gtc-navy font-medium' : 'text-gray-300 hover:bg-white/10 hover:text-white'
@@ -71,8 +82,8 @@ const Sidebar = () => {
                 }
               >
                 <item.icon className="w-5 h-5 flex-shrink-0" />
-                {!collapsed && <span className="flex-1">{item.label}</span>}
-                {!collapsed && item.badge && (
+                {showLabels && <span className="flex-1">{item.label}</span>}
+                {showLabels && item.badge && (
                   <span className="text-[9px] px-1.5 py-0.5 bg-red-500 text-white rounded-full font-semibold">{item.badge}</span>
                 )}
               </NavLink>
@@ -83,7 +94,7 @@ const Sidebar = () => {
 
       {/* User Section */}
       <div className="p-4 border-t border-white/10">
-        {!collapsed && user && (
+        {showLabels && user && (
           <div className="mb-4 px-3">
             <p className="text-white font-medium truncate">{user.full_name}</p>
             <p className="text-gray-400 text-sm truncate">{user.email}</p>
@@ -97,10 +108,11 @@ const Sidebar = () => {
           className="flex items-center gap-3 px-4 py-3 w-full text-gray-300 hover:bg-red-500/20 hover:text-red-400 rounded-xl transition-all"
         >
           <LogOut className="w-5 h-5 flex-shrink-0" />
-          {!collapsed && <span>退出登录</span>}
+          {showLabels && <span>退出登录</span>}
         </button>
       </div>
     </aside>
+    </>
   );
 };
 

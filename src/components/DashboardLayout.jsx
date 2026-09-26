@@ -4,7 +4,7 @@ import { PageErrorBoundary } from './ErrorBoundary';
 import { useAuth } from '../context/AuthContext';
 import { isParticipant, isInternal } from '../utils/roles';
 import Sidebar from './Sidebar';
-import { Bell, Search, Settings, LogOut, ChevronDown } from 'lucide-react';
+import { Bell, Search, Settings, LogOut, ChevronDown, Menu } from 'lucide-react';
 import AIChatWidget from './AIChatWidget';
 
 const DashboardLayout = () => {
@@ -12,6 +12,7 @@ const DashboardLayout = () => {
   const navigate = useNavigate();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showNotification, setShowNotification] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);   // 窄屏侧边栏抽屉，默认收起
   const userMenuRef = useRef(null);
 
   // 点击外部关闭菜单
@@ -52,11 +53,14 @@ const DashboardLayout = () => {
 
   return (
     <div className="min-h-screen bg-gtc-light flex">
-      <Sidebar />
+      <Sidebar mobileOpen={mobileNavOpen} onMobileClose={() => setMobileNavOpen(false)} />
 
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col min-w-0">
         {/* Top Header */}
-        <header className="bg-white border-b border-gray-200 px-8 py-4 flex items-center justify-between sticky top-0 z-10">
+        <header className="bg-white border-b border-gray-200 px-4 md:px-8 py-4 flex items-center justify-between gap-3 sticky top-0 z-10">
+          <button onClick={() => setMobileNavOpen(true)} className="md:hidden p-2 -ml-2 text-gray-600 hover:bg-gray-100 rounded-lg" aria-label="打开菜单">
+            <Menu className="w-5 h-5" />
+          </button>
           <div className="relative flex-1 max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
             <input
@@ -124,7 +128,7 @@ const DashboardLayout = () => {
         </header>
 
         {/* Main Content */}
-        <main className="flex-1 p-8">
+        <main className="flex-1 p-4 md:p-8">
           <PageErrorBoundary><Outlet /></PageErrorBoundary>
         </main>
       </div>
