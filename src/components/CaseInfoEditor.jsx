@@ -15,7 +15,8 @@ const CaseInfoEditor = ({ caseData, onSaved }) => {
       case_title: caseData.case_title || '',
       case_type: caseData.case_type || '',
       case_number: caseData.case_number || caseData.seizure_number || '',
-      cbp_deadline: caseData.cbp_deadline ? new Date(caseData.cbp_deadline).toISOString().split('T')[0] : '',
+      // 用后端给的美东日期回填：截止时刻是美东 23:59:59，转 UTC 会跨到第二天
+      cbp_deadline: caseData.cbp_deadline_date || '',
       declared_value: caseData.declared_value || '',
       port_of_entry: caseData.port_of_entry || '',
       hts_code: caseData.hts_code || '',
@@ -70,7 +71,7 @@ const CaseInfoEditor = ({ caseData, onSaved }) => {
             <p className="text-sm"><span className="text-gray-400">CBP截止日期：</span>
               {caseData.cbp_deadline
                 ? <span className={`font-medium ${new Date(caseData.cbp_deadline) < new Date() ? 'text-red-600' : new Date(caseData.cbp_deadline) - new Date() < 7 * 86400000 ? 'text-amber-600' : 'text-gray-800'}`}>
-                    {new Date(caseData.cbp_deadline).toLocaleDateString('zh-CN')}
+                    {caseData.cbp_deadline_date || new Date(caseData.cbp_deadline).toLocaleDateString('zh-CN')}
                   </span>
                 : '-'}
             </p>
