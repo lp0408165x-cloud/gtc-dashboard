@@ -217,18 +217,25 @@ export default function RoomPage() {
   if (!room) return <RoomShell title={member.case_title}><Loader2 className="w-6 h-6 animate-spin text-gray-400 mx-auto" /></RoomShell>;
 
   const dl = room.deadline;
-  const dn = dl ? daysLeft(dl.due_at) : null;
+  // 剩余天数与等级以后端为准（按美东日期算）；旧接口没有这两个字段时退回本地推算
+  const dn = dl ? (dl.days_left ?? daysLeft(dl.due_at)) : null;
+  const dlLevel = dl ? (dl.level || (dn < 0 ? 'overdue' : dn <= 3 ? 'red' : dn <= 7 ? 'yellow' : 'normal')) : null;
+  const dlRed = dlLevel === 'overdue' || dlLevel === 'red';
+  const dlBox = dlRed ? 'bg-red-50 border-red-200 text-red-700'
+    : dlLevel === 'yellow' ? 'bg-amber-50 border-amber-200 text-amber-800' : 'bg-white border-gray-200 text-gray-800';
   const others = me.cases.filter((c) => String(c.case_id) !== String(caseId));
 
   return (
     <RoomShell title={room.case.title} subtitle={`当前阶段：${room.case.stage}`}>
       <div className="space-y-6">
         {dl && (
-          <div className={`rounded-xl px-4 py-3 border flex items-center gap-2 ${dn <= 3 ? 'bg-red-50 border-red-200 text-red-700' : 'bg-white border-gray-200 text-gray-800'}`}>
+          <div className={`rounded-xl px-4 py-3 border flex items-center gap-2 ${dlBox}`}>
             <Clock className="w-5 h-5 shrink-0" />
             <p className="text-sm">
-              <span className="font-medium">{dl.label}</span> · {leftText(dn)}
-              <span className={`block text-xs ${dn <= 3 ? 'text-red-600' : 'text-gray-500'}`}>{fmtDate(dl.due_at)}</span>
+              <span className="font-medium">{dl.label}</span> · {dlLevel === 'overdue' ? '已逾期' : leftText(dn)}
+              <span className={`block text-xs ${dlRed ? 'text-red-600' : 'text-gray-500'}`}>
+                {dl.due_date_et ? `截止 ${dl.due_date_et}（美东时间）` : fmtDate(dl.due_at)}
+              </span>
             </p>
           </div>
         )}

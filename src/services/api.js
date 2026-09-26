@@ -144,6 +144,14 @@ export const filesAPI = {
   },
 };
 
+// 控制台汇总（仅内部角色）：近期期限、待验收、最近上传、最近案件、状态统计
+export const dashboardAPI = {
+  work: async () => {
+    const response = await api.get('/dashboard/work');
+    return response.data;
+  },
+};
+
 export const aiAPI = {
   status: async () => {
     const response = await api.get('/ai/status');
