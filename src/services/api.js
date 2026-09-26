@@ -21,7 +21,14 @@ api.interceptors.request.use(
 );
 
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    // 案件室 token 滑动续期：剩余不足 7 天时后端在响应头里带回新 token，替换本地的
+    const renewed = response.headers?.['x-renewed-token'];
+    if (renewed) {
+      try { localStorage.setItem('gtc_token', renewed); } catch { /* 忽略：下次到期再重新登录 */ }
+    }
+    return response;
+  },
   (error) => {
     // 422 的 detail 是数组，页面直接渲染会整页崩：统一换成「字段名：原因」字符串
     if (error.response?.status === 422 && Array.isArray(error.response.data?.detail)) {

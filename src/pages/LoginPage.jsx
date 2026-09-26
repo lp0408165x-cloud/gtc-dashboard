@@ -1,11 +1,12 @@
 import { useState } from 'react';
+import { ADMIN_EMAIL_KEY, loadEmail, saveEmail } from '../utils/rememberEmail';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Shield, Mail, Lock, Phone, MessageCircle, ArrowRight, AlertCircle } from 'lucide-react';
 import LineSwitcher from '../components/LineSwitcher';
 
 const LoginPage = () => {
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(() => loadEmail(ADMIN_EMAIL_KEY));   // 上次登录成功的邮箱
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -20,6 +21,7 @@ const LoginPage = () => {
 
     try {
       await login(email, password);
+      saveEmail(ADMIN_EMAIL_KEY, email);
       navigate('/dashboard');
     } catch (err) {
       setError(err.message || '登录失败，请检查邮箱和密码');

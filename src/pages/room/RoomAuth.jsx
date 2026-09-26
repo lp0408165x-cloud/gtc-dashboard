@@ -11,6 +11,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Loader2, Mail, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { roomAPI, errorText } from '../../services/roomApi';
+import { ROOM_EMAIL_KEY, loadEmail, saveEmail } from '../../utils/rememberEmail';
 
 const RESEND_SECONDS = 60;   // 与后端重发间隔一致
 
@@ -105,11 +106,12 @@ function CodeStep({ emailShown, onVerify, onResend }) {
   );
 }
 
-// 登录成功：存 token 与用户，进入对应案件
+// 登录成功：存 token 与用户，记住邮箱（下次打开登录页自动填好），进入对应案件
 function useFinishLogin() {
   const { setUser } = useAuth();
   const navigate = useNavigate();
   return (data) => {
+    saveEmail(ROOM_EMAIL_KEY, data.user?.email);
     localStorage.setItem('gtc_token', data.access_token);
     localStorage.setItem('gtc_user', JSON.stringify(data.user));
     setUser(data.user);
@@ -163,6 +165,7 @@ export function InviteLoginPage() {
               <span className="font-medium"> {info.email_masked} </span>发送一个 6 位验证码。
             </p>
           </div>
+          {/* 不填邮箱：验证码发往邀请绑定的邮箱，登录时后端按链接取邮箱 */}
           <Err text={err} />
           <Btn onClick={send} busy={busy}>发送验证码</Btn>
         </div>
@@ -182,7 +185,7 @@ export function InviteLoginPage() {
 // ---------------------------------------------------------------- /room-login
 export function RoomLoginPage() {
   const finish = useFinishLogin();
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(() => loadEmail(ROOM_EMAIL_KEY));
   const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
