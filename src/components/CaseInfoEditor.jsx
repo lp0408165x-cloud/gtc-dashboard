@@ -5,6 +5,12 @@ import { Edit3, Save, X, Loader2, FileText, MapPin, Package } from 'lucide-react
 const CASE_TYPES = ['CF-28', 'CF-29', 'UFLPA', 'WRO', 'Detention', 'Seizure', 'AD/CVD', 'Section 301', 'Other'];
 const PORTS = ['LA', 'CA', 'NY', 'NJ', 'TX', 'WA', 'FL', 'GA', 'IL', 'Other'];
 
+// CBP 联系人（cases.cbp_contact）：编辑时拆成五个输入框，保存时合成对象
+const CONTACT_FIELDS = [
+  ['name', '姓名'], ['title', '职位'], ['office', '所属办公室'], ['phone', '电话'], ['email', '邮箱'],
+];
+const contactText = (c) => CONTACT_FIELDS.map(([k]) => c?.[k]).filter(Boolean).join(' · ');
+
 const CaseInfoEditor = ({ caseData, onSaved }) => {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -22,6 +28,8 @@ const CaseInfoEditor = ({ caseData, onSaved }) => {
       hts_code: caseData.hts_code || '',
       law_basis: caseData.law_basis || '',
       product_description: caseData.product_description || '',
+      notice_date: caseData.notice_date || '',
+      ...Object.fromEntries(CONTACT_FIELDS.map(([k]) => [`contact_${k}`, caseData.cbp_contact?.[k] || ''])),
     });
     setEditing(true);
   };
@@ -29,9 +37,12 @@ const CaseInfoEditor = ({ caseData, onSaved }) => {
   const handleSave = async () => {
     setSaving(true);
     try {
-      const payload = { ...form };
+      const payload = Object.fromEntries(Object.entries(form).filter(([k]) => !k.startsWith('contact_')));
       if (payload.declared_value) payload.declared_value = parseFloat(payload.declared_value);
       if (payload.cbp_deadline === '') payload.cbp_deadline = null;
+      if (payload.notice_date === '') payload.notice_date = null;
+      const contact = Object.fromEntries(CONTACT_FIELDS.map(([k]) => [k, (form[`contact_${k}`] || '').trim() || null]));
+      payload.cbp_contact = Object.values(contact).some(Boolean) ? contact : null;
       const updated = await casesAPI.update(caseData.id, payload);
       onSaved(updated);
       setEditing(false);
@@ -86,6 +97,8 @@ const CaseInfoEditor = ({ caseData, onSaved }) => {
             <p className="text-sm"><span className="text-gray-400">口岸：</span>{caseData.port_of_entry || '-'}</p>
             <p className="text-sm"><span className="text-gray-400">HTS编码：</span>{caseData.hts_code || '-'}</p>
             <p className="text-sm"><span className="text-gray-400">法律依据：</span>{caseData.law_basis || '-'}</p>
+            <p className="text-sm"><span className="text-gray-400">通知日期：</span>{caseData.notice_date || '-'}</p>
+            <p className="text-sm"><span className="text-gray-400">CBP 联系人：</span>{contactText(caseData.cbp_contact) || '-'}</p>
           </div>
         </div>
 
@@ -153,6 +166,20 @@ const CaseInfoEditor = ({ caseData, onSaved }) => {
           <label className="block text-xs text-gray-500 mb-1">CBP截止日期</label>
           <input type="date" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-gtc-gold focus:border-transparent" {...f('cbp_deadline')} />
         </div>
+
+        {/* 通知日期 */}
+        <div>
+          <label className="block text-xs text-gray-500 mb-1">通知日期</label>
+          <input type="date" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-gtc-gold focus:border-transparent" {...f('notice_date')} />
+        </div>
+
+        {/* CBP 联系人 */}
+        {CONTACT_FIELDS.map(([k, label]) => (
+          <div key={k}>
+            <label className="block text-xs text-gray-500 mb-1">CBP 联系人 · {label}</label>
+            <input type={k === 'email' ? 'email' : 'text'} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-gtc-gold focus:border-transparent" {...f(`contact_${k}`)} />
+          </div>
+        ))}
 
         {/* 报关货值 */}
         <div>

@@ -1191,6 +1191,8 @@ const CaseDetailPage = () => {
                   <p className="text-sm"><span className="text-gray-400">口岸：</span> {caseData.port_of_entry || '-'}</p>
                   <p className="text-sm"><span className="text-gray-400">HTS编码：</span> {caseData.hts_code || '-'}</p>
                   <p className="text-sm"><span className="text-gray-400">法律依据：</span> {caseData.law_basis || '-'}</p>
+                  <p className="text-sm"><span className="text-gray-400">通知日期：</span> {caseData.notice_date || '-'}</p>
+                  <p className="text-sm"><span className="text-gray-400">CBP 联系人：</span> {['name', 'title', 'office', 'phone', 'email'].map((k) => caseData.cbp_contact?.[k]).filter(Boolean).join(' · ') || '-'}</p>
                 </div>
               </div>
               {/* 案情简介 */}

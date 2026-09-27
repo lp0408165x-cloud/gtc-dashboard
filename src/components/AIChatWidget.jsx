@@ -121,7 +121,6 @@ const AIChatWidget = () => {
   const quickQuestions = [
     'UFLPA 合规要求有哪些？',
     '如何创建新案件？',
-    '订阅套餐有什么区别？',
     'CBP 扣留该如何应对？',
   ];
 

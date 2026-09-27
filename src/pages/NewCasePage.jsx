@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { casesAPI } from '../services/api';
+import { useAuth } from '../context/AuthContext';
+import { isInternal } from '../utils/roles';
+import { NoticeUploadCard, FieldNote, DerivedDeadlineConfirm } from '../components/NoticeIntake';
 import {
   ArrowLeft,
   ArrowRight,
@@ -10,8 +13,20 @@ import {
   ClipboardList,
 } from 'lucide-react';
 
+// CBP 联系人：表单里拆成五个输入框，提交时合成 cbp_contact
+const CONTACT_FIELDS = [
+  ['name', '姓名'], ['title', '职位'], ['office', '所属办公室'], ['phone', '电话'], ['email', '邮箱'],
+];
+const contactOf = (fd) => Object.fromEntries(CONTACT_FIELDS.map(([k]) => [k, (fd[`contact_${k}`] || '').trim() || null]));
+const contactText = (c) => CONTACT_FIELDS.map(([k]) => c?.[k]).filter(Boolean).join(' · ');
+
 const NewCasePage = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const internal = isInternal(user);                  // 通知进件只对内部角色开放
+  const [intake, setIntake] = useState(null);         // 后端返回的进件结果
+  const [suggested, setSuggested] = useState(null);   // 回填时的值（判断「已手动修改」）
+  const [deadlineConfirmed, setDeadlineConfirmed] = useState(false);
   const [step, setStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -26,15 +41,47 @@ const NewCasePage = () => {
     declared_value: '',
     port_of_entry: '',
     hts_code: '',
+    notice_date: '',
+    ...Object.fromEntries(CONTACT_FIELDS.map(([k]) => [`contact_${k}`, ''])),
   });
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  // 通知读取结果回填：只填读出来的字段，读不出的保留专家已填的内容
+  const applyIntake = (res) => {
+    setIntake(res);
+    setDeadlineConfirmed(false);
+    setError('');
+    if (!res.form) { setSuggested(null); return; }
+    const f = res.form;
+    const next = { ...formData };
+    for (const k of ['case_title', 'case_type', 'case_number', 'port_of_entry', 'hts_code', 'notice_date', 'cbp_deadline']) {
+      if (f[k]) next[k] = f[k];
+    }
+    for (const [k] of CONTACT_FIELDS) {
+      if (f.cbp_contact?.[k]) next[`contact_${k}`] = f.cbp_contact[k];
+    }
+    setFormData(next);
+    setSuggested({ ...f, cbp_contact: contactOf(next) });
+  };
+  const clearIntake = () => { setIntake(null); setSuggested(null); setDeadlineConfirmed(false); };
+
+  const fields = intake?.fields || null;
+  const rd = fields?.reply_deadline;
+  // 推算的回复期限：日期没被专家改过时，要勾选确认
+  const derivedActive = Boolean(rd?.derived && rd.value && formData.cbp_deadline === rd.value);
+  const note = (formKey, fieldKey, extra = {}) =>
+    fields ? <FieldNote field={fields[fieldKey]} suggested={suggested?.[formKey]} current={formData[formKey]} {...extra} /> : null;
+
   const handleNext = () => {
     if (!formData.case_title.trim()) {
       setError('请填写案件标题');
+      return;
+    }
+    if (derivedActive && !deadlineConfirmed) {
+      setError('回复期限是按通知原文推算的，请核对后勾选确认');
       return;
     }
     setError('');
@@ -47,9 +94,17 @@ const NewCasePage = () => {
     try {
       // 没填的字段发 null，不发 ""（"" 在日期、数字字段上会校验失败）
       const caseData = Object.fromEntries(
-        Object.entries(formData).map(([k, v]) => [k, typeof v === 'string' && !v.trim() ? null : v])
+        Object.entries(formData)
+          .filter(([k]) => !k.startsWith('contact_'))
+          .map(([k, v]) => [k, typeof v === 'string' && !v.trim() ? null : v])
       );
       if (caseData.declared_value != null) caseData.declared_value = parseFloat(caseData.declared_value);
+      const contact = contactOf(formData);
+      caseData.cbp_contact = Object.values(contact).some(Boolean) ? contact : null;
+      if (intake) {
+        caseData.notice_intake_id = intake.intake_id;
+        caseData.cbp_deadline_confirmed = derivedActive && deadlineConfirmed;
+      }
       const newCase = await casesAPI.create(caseData);
       setSuccess(true);
       setTimeout(() => {
@@ -89,7 +144,7 @@ const NewCasePage = () => {
             <CheckCircle className="w-8 h-8 text-green-600" />
           </div>
           <h2 className="text-2xl font-display font-bold text-gtc-navy mb-2">
-            案件创建成功！
+            {intake ? '立案成功！' : '案件创建成功！'}
           </h2>
           <p className="text-gray-500 mb-6">正在跳转到案件详情页面...</p>
           <div className="w-8 h-8 border-2 border-gtc-gold/30 border-t-gtc-gold rounded-full animate-spin mx-auto"></div>
@@ -157,6 +212,7 @@ const NewCasePage = () => {
         {/* Step 1: 基本信息 */}
         {step === 1 && (
           <div className="space-y-6">
+            {internal && <NoticeUploadCard intake={intake} onResult={applyIntake} onClear={clearIntake} />}
             <h2 className="text-lg font-display font-bold text-gtc-navy mb-6">
               基本信息
             </h2>
@@ -195,6 +251,7 @@ const NewCasePage = () => {
                 <option value="Seizure">扣押/没收</option>
                 <option value="Other">其他</option>
               </select>
+              {note('case_type', 'case_type')}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -210,10 +267,11 @@ const NewCasePage = () => {
                   className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gtc-gold focus:border-transparent transition-all"
                   placeholder="例如：XXX-XXXXXXX-X"
                 />
+                {note('case_number', 'entry_number')}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  CBP 截止日期
+                  CBP 截止日期（回复期限）
                 </label>
                 <input
                   type="date"
@@ -222,6 +280,10 @@ const NewCasePage = () => {
                   onChange={handleChange}
                   className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gtc-gold focus:border-transparent transition-all"
                 />
+                {note('cbp_deadline', 'reply_deadline', { derived: derivedActive })}
+                {derivedActive && (
+                  <DerivedDeadlineConfirm basis={rd.basis} confirmed={deadlineConfirmed} onChange={setDeadlineConfirmed} />
+                )}
               </div>
             </div>
 
@@ -251,6 +313,7 @@ const NewCasePage = () => {
                   className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gtc-gold focus:border-transparent transition-all"
                   placeholder="例如：Los Angeles, CA"
                 />
+                {note('port_of_entry', 'port')}
               </div>
             </div>
 
@@ -266,6 +329,47 @@ const NewCasePage = () => {
                 className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gtc-gold focus:border-transparent transition-all"
                 placeholder="例如：8541.40.6020"
               />
+              {note('hts_code', 'hts_code')}
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  通知日期
+                </label>
+                <input
+                  type="date"
+                  name="notice_date"
+                  value={formData.notice_date}
+                  onChange={handleChange}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gtc-gold focus:border-transparent transition-all"
+                />
+                {note('notice_date', 'notice_date')}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                CBP 联系人
+              </label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {CONTACT_FIELDS.map(([k, label]) => (
+                  <input
+                    key={k}
+                    type={k === 'email' ? 'email' : 'text'}
+                    name={`contact_${k}`}
+                    value={formData[`contact_${k}`]}
+                    onChange={handleChange}
+                    aria-label={`CBP 联系人${label}`}
+                    placeholder={label}
+                    className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gtc-gold focus:border-transparent transition-all"
+                  />
+                ))}
+              </div>
+              {fields && (
+                <FieldNote field={fields.cbp_contact} suggested={contactText(suggested?.cbp_contact)}
+                           current={contactText(contactOf(formData))} />
+              )}
             </div>
 
             <div>
@@ -301,7 +405,12 @@ const NewCasePage = () => {
                 value={formData.case_type ? caseTypeLabel[formData.case_type] : '—'}
               />
               <Row label="报关号 (Entry #)" value={formData.case_number || '—'} />
-              <Row label="CBP 截止日期" value={formData.cbp_deadline || '—'} />
+              <Row
+                label="CBP 截止日期（回复期限）"
+                value={formData.cbp_deadline ? `${formData.cbp_deadline}${derivedActive ? '（按通知原文推算，已确认）' : ''}` : '—'}
+              />
+              <Row label="通知日期" value={formData.notice_date || '—'} />
+              <Row label="CBP 联系人" value={contactText(contactOf(formData)) || '—'} />
               <Row
                 label="报关货值"
                 value={
@@ -313,6 +422,7 @@ const NewCasePage = () => {
               <Row label="口岸" value={formData.port_of_entry || '—'} />
               <Row label="HTS编码" value={formData.hts_code || '—'} />
               <Row label="案情简介" value={formData.product_description || '—'} multiline />
+              {intake && <Row label="原通知" value={`${intake.file.name}（立案后存为案件第一份文件）`} />}
             </div>
 
             <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 text-sm text-blue-700">
@@ -357,7 +467,7 @@ const NewCasePage = () => {
               ) : (
                 <>
                   <CheckCircle className="w-5 h-5" />
-                  确认创建
+                  {intake ? '立案' : '确认创建'}
                 </>
               )}
             </button>
