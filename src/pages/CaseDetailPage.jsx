@@ -1234,6 +1234,8 @@ const CaseDetailPage = () => {
                 </label>
               </div>
 
+              {/* 一致性校验、UFLPA 扫描：后端仅内部角色可用 */}
+              {isInternal(user) ? (
               <div className="flex items-center gap-3 flex-wrap">
                 <button onClick={handleConsistencyCheck} disabled={processing || files.length === 0}
                   className="inline-flex items-center gap-2 bg-orange-500 text-white px-4 py-2 rounded-xl hover:bg-orange-600 disabled:opacity-50">
@@ -1246,6 +1248,9 @@ const CaseDetailPage = () => {
                   UFLPA 扫描
                 </button>
               </div>
+              ) : (
+                <p className="text-sm text-gray-600 bg-blue-50 border border-blue-100 rounded-xl px-4 py-3">资料齐全后，专家会进行审核</p>
+              )}
 
               {renderToolResult()}
               {renderScanResult()}
@@ -1344,7 +1349,7 @@ const CaseDetailPage = () => {
               )}
               {renderSavedRiskAnalysis()}
               {renderSavedPetition()}
-              <div className={`grid grid-cols-1 ${isInternal(user) ? 'md:grid-cols-3' : 'md:grid-cols-2'} gap-4`}>
+              <div className={`grid grid-cols-1 ${isInternal(user) ? 'md:grid-cols-3' : 'md:grid-cols-1'} gap-4`}>
                 <button onClick={handleAnalyze} disabled={analyzing}
                   className="bg-blue-500 text-white p-4 rounded-xl flex items-center justify-center gap-2 hover:bg-blue-600 disabled:opacity-50">
                   {analyzing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Brain className="w-5 h-5" />}
@@ -1357,11 +1362,14 @@ const CaseDetailPage = () => {
                     {caseData?.petition_draft ? '重新生成申诉书' : '专业生成申诉书'}
                   </button>
                 )}
+                {/* 与文件管理页的 UFLPA 扫描同一接口，仅内部角色 */}
+                {isInternal(user) && (
                 <button onClick={handleRiskScan} disabled={scanning}
                   className="bg-red-500 text-white p-4 rounded-xl flex items-center justify-center gap-2 hover:bg-red-600 disabled:opacity-50">
                   {scanning ? <Loader2 className="w-5 h-5 animate-spin" /> : <Search className="w-5 h-5" />}
                   UFLPA 黑名单扫描
                 </button>
+                )}
               </div>
 
               {renderScanResult()}
