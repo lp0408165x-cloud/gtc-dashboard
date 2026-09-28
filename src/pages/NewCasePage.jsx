@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { casesAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -20,6 +20,16 @@ const CONTACT_FIELDS = [
 const contactOf = (fd) => Object.fromEntries(CONTACT_FIELDS.map(([k]) => [k, (fd[`contact_${k}`] || '').trim() || null]));
 const contactText = (c) => CONTACT_FIELDS.map(([k]) => c?.[k]).filter(Boolean).join(' · ');
 
+// 扣留案件额外推算的期限（与后端 notice_intake.DEEMED_EXCLUSION_* 一致）
+const DEEMED_LABEL = '视为拒绝入境（30 天）';
+const DEEMED_NOTE = '法定起算点为货物提交查验日，请以 ACE 记录核对';
+const addDays = (ymd, n) => {
+  const d = new Date(`${ymd}T00:00:00Z`);
+  if (Number.isNaN(d.getTime())) return '';
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+};
+
 const NewCasePage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -27,6 +37,7 @@ const NewCasePage = () => {
   const [intake, setIntake] = useState(null);         // 后端返回的进件结果
   const [suggested, setSuggested] = useState(null);   // 回填时的值（判断「已手动修改」）
   const [deadlineConfirmed, setDeadlineConfirmed] = useState(false);
+  const [deemedConfirmed, setDeemedConfirmed] = useState(false);
   const [step, setStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -63,6 +74,8 @@ const NewCasePage = () => {
     for (const [k] of CONTACT_FIELDS) {
       if (f.cbp_contact?.[k]) next[`contact_${k}`] = f.cbp_contact[k];
     }
+    // 案情摘要只在「案情简介」还空着时回填，不覆盖专家已写的内容
+    if (f.product_description && !formData.product_description.trim()) next.product_description = f.product_description;
     setFormData(next);
     setSuggested({ ...f, cbp_contact: contactOf(next) });
   };
@@ -72,6 +85,9 @@ const NewCasePage = () => {
   const rd = fields?.reply_deadline;
   // 推算的回复期限：日期没被专家改过时，要勾选确认
   const derivedActive = Boolean(rd?.derived && rd.value && formData.cbp_deadline === rd.value);
+  // 扣留案件：视为拒绝入境 = 通知日期 + 30 天（推算）；勾选确认才写入期限
+  const deemedDate = formData.case_type === 'Detention' && formData.notice_date ? addDays(formData.notice_date, 30) : '';
+  useEffect(() => { setDeemedConfirmed(false); }, [deemedDate]);   // 日期变了要重新确认
   const note = (formKey, fieldKey, extra = {}) =>
     fields ? <FieldNote field={fields[fieldKey]} suggested={suggested?.[formKey]} current={formData[formKey]} {...extra} /> : null;
 
@@ -104,6 +120,10 @@ const NewCasePage = () => {
       if (intake) {
         caseData.notice_intake_id = intake.intake_id;
         caseData.cbp_deadline_confirmed = derivedActive && deadlineConfirmed;
+      }
+      if (deemedDate && deemedConfirmed) {
+        caseData.deemed_exclusion_date = deemedDate;
+        caseData.deemed_exclusion_confirmed = true;
       }
       const newCase = await casesAPI.create(caseData);
       setSuccess(true);
@@ -352,6 +372,20 @@ const NewCasePage = () => {
               </div>
             </div>
 
+            {deemedDate && (
+              <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+                <p className="font-medium flex items-center gap-2">
+                  {DEEMED_LABEL}：{deemedDate}
+                  <span className="px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 text-xs">推算</span>
+                </p>
+                <p className="text-xs text-blue-800 mt-1">按通知日期 + 30 天推算。{DEEMED_NOTE}。</p>
+                <label className="mt-2 flex items-start gap-2">
+                  <input type="checkbox" checked={deemedConfirmed} onChange={(e) => setDeemedConfirmed(e.target.checked)} className="mt-0.5" />
+                  <span>我已核对，立案时写入期限</span>
+                </label>
+              </div>
+            )}
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 CBP 联系人
@@ -388,6 +422,13 @@ const NewCasePage = () => {
                 className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gtc-gold focus:border-transparent transition-all resize-none"
                 placeholder="简要描述案件背景、查扣情况及已知信息..."
               />
+              {suggested?.product_description && (
+                <p className="mt-1.5 text-xs text-gray-500">
+                  {formData.product_description.trim() === suggested.product_description.trim()
+                    ? '已按通知内容概括（100 字以内），请核对修改。'
+                    : '已手动修改。'}
+                </p>
+              )}
             </div>
           </div>
         )}
@@ -414,6 +455,10 @@ const NewCasePage = () => {
                 value={formData.cbp_deadline ? `${formData.cbp_deadline}${derivedActive ? '（按通知原文推算，已确认）' : ''}` : '—'}
               />
               <Row label="通知日期" value={formData.notice_date || '—'} />
+              {deemedDate && (
+                <Row label={DEEMED_LABEL}
+                     value={`${deemedDate}（推算）${deemedConfirmed ? '，已确认，立案时写入期限' : '，未勾选，不写入期限'}`} />
+              )}
               <Row label="CBP 联系人" value={contactText(contactOf(formData)) || '—'} />
               <Row
                 label="报关货值"
