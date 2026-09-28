@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { casesAPI } from '../services/api';
 import { Edit3, Save, X, Loader2, FileText, MapPin, Package } from 'lucide-react';
 
-const CASE_TYPES = ['CF-28', 'CF-29', 'UFLPA', 'WRO', 'Detention', 'Seizure', 'AD/CVD', 'Section 301', 'Other'];
+const CASE_TYPES = ['CF-28', 'CF-29', 'UFLPA', 'WRO', 'Detention', 'Exclusion', 'Seizure', 'AD/CVD', 'Section 301', 'Other'];
 const PORTS = ['LA', 'CA', 'NY', 'NJ', 'TX', 'WA', 'FL', 'GA', 'IL', 'Other'];
 
 // CBP 联系人（cases.cbp_contact）：编辑时拆成五个输入框，保存时合成对象

@@ -125,9 +125,11 @@ const NewCasePage = () => {
     'CF-29': 'CF-29 行动通知',
     UFLPA: 'UFLPA 强迫劳动扣押',
     WRO: 'WRO 暂扣令',
+    Detention: '扣留',
+    Exclusion: '拒绝入境',
+    Seizure: '查扣没收',
     'AD/CVD': '反倾销/反补贴',
     'Section 301': '301条款',
-    Seizure: '扣押/没收',
     Other: '其他',
   };
 
@@ -246,9 +248,11 @@ const NewCasePage = () => {
                 <option value="CF-29">CF-29 行动通知</option>
                 <option value="UFLPA">UFLPA 强迫劳动扣押</option>
                 <option value="WRO">WRO 暂扣令</option>
+                <option value="Detention">扣留</option>
+                <option value="Exclusion">拒绝入境</option>
+                <option value="Seizure">查扣没收</option>
                 <option value="AD/CVD">反倾销/反补贴</option>
                 <option value="Section 301">301条款</option>
-                <option value="Seizure">扣押/没收</option>
                 <option value="Other">其他</option>
               </select>
               {note('case_type', 'case_type')}
