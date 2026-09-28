@@ -37,7 +37,7 @@ import { titleFor } from './utils/pageTitle';
 import { useAuth } from './context/AuthContext';
 import { isInternal } from './utils/roles';
 
-// 后端仅对内部角色开放的页面：其他角色直接回控制台
+// 仅对内部角色开放的页面（后端限制，或按产品决定不对客户开放）：其他角色直接回控制台
 function InternalOnly({ children }) {
   const { user, loading } = useAuth();
   if (loading) return null;          // 刷新时用户信息还在从本地恢复，别提前跳走
@@ -79,25 +79,25 @@ function App() {
           <Route path="cases/new" element={<NewCasePage />} />
           <Route path="cases/:id" element={<CaseDetailPage />} />
           <Route path="supply-chain-review" element={<InternalOnly><SupplyChainReviewPage /></InternalOnly>} />
-          <Route path="analytics" element={<AnalyticsPage />} />
+          <Route path="analytics" element={<InternalOnly><AnalyticsPage /></InternalOnly>} />
           <Route path="users" element={<UsersPage />} />
           <Route path="settings" element={<SettingsPage />} />
           <Route path="subscription" element={<InternalOnly><SubscriptionPage /></InternalOnly>} />   {/* 平台不再售卖订阅：客户不可见，侧边栏无入口 */}
           <Route path="resources" element={<ResourcesPage />} />         {/* v8 新增 */}
-          <Route path="training" element={<TrainingCenter />} />
-          <Route path="training/courses/:courseId" element={<CourseDetail />} />
-          <Route path="training/lessons/:lessonId" element={<LessonView />} />
-          <Route path="training/courses/:courseId/exam" element={<ExamPage />} />
-          <Route path="training/certificates" element={<CertificatesPage />} />
-          <Route path="training/admin" element={<TrainingAdmin />} />
+          <Route path="training" element={<InternalOnly><TrainingCenter /></InternalOnly>} />
+          <Route path="training/courses/:courseId" element={<InternalOnly><CourseDetail /></InternalOnly>} />
+          <Route path="training/lessons/:lessonId" element={<InternalOnly><LessonView /></InternalOnly>} />
+          <Route path="training/courses/:courseId/exam" element={<InternalOnly><ExamPage /></InternalOnly>} />
+          <Route path="training/certificates" element={<InternalOnly><CertificatesPage /></InternalOnly>} />
+          <Route path="training/admin" element={<InternalOnly><TrainingAdmin /></InternalOnly>} />
           <Route path="tariff-calculator" element={<TariffCalculatorPage />} />
           <Route path="solar-tariff" element={<SolarTariffPage />} />
           <Route path="quick-check" element={<QuickCheckPage />} />
-          <Route path="shipments" element={<ShipmentsPage />} />
-          <Route path="supplier-scan" element={<SupplierScanPage />} />
-          <Route path="cases/seizure" element={<SeizureCasesPage />} />
-          <Route path="cases/seizure/new" element={<NewSeizureCasePage />} />
-          <Route path="cases/seizure/:id" element={<SeizureCaseDetailPage />} />
+          <Route path="shipments" element={<InternalOnly><ShipmentsPage /></InternalOnly>} />
+          <Route path="supplier-scan" element={<InternalOnly><SupplierScanPage /></InternalOnly>} />
+          <Route path="cases/seizure" element={<InternalOnly><SeizureCasesPage /></InternalOnly>} />
+          <Route path="cases/seizure/new" element={<InternalOnly><NewSeizureCasePage /></InternalOnly>} />
+          <Route path="cases/seizure/:id" element={<InternalOnly><SeizureCaseDetailPage /></InternalOnly>} />
         </Route>
 
         {/* 404 */}

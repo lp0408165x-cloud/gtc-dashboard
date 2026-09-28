@@ -24,20 +24,20 @@ const Sidebar = ({ mobileOpen = false, onMobileClose = () => {} }) => {
   };
 
   const allNavItems = [
-    // ── 所有用户可见 ──
+    // ── 客户可见：控制台、案件管理、新建案件、单证核查、关税计算器、光伏税负测算、资料库、设置；其余 internalOnly ──
     { path: '/dashboard',           icon: LayoutDashboard, label: '控制台',    adminOnly: false },
     { path: '/cases',               icon: FolderOpen,      label: '案件管理',  adminOnly: false },
     { path: '/cases/new',           icon: FilePlus,        label: '新建案件',  adminOnly: false },
     { path: '/supply-chain-review', icon: Package,         label: '供应链审查',adminOnly: false, internalOnly: true },
-    { path: '/supplier-scan',       icon: ShieldAlert,     label: '供应商扫描',adminOnly: false },
-    { path: '/cases/seizure', icon: AlertTriangle, label: '罚没应对', adminOnly: false, badge: 'NEW' },
+    { path: '/supplier-scan',       icon: ShieldAlert,     label: '供应商扫描',adminOnly: false, internalOnly: true },
+    { path: '/cases/seizure', icon: AlertTriangle, label: '罚没应对', adminOnly: false, badge: 'NEW', internalOnly: true },
     { path: '/tariff-calculator',   icon: Calculator,      label: '关税计算器',adminOnly: false },
     { path: '/quick-check', icon: FileSearch, label: '单证核查', adminOnly: false, badge: 'NEW' },
     { path: '/solar-tariff',        icon: Sun,             label: '光伏税负测算',adminOnly: false, badge: 'NEW' },
-    { path: '/shipments',           icon: Ship,            label: '货件通道',  adminOnly: false, badge: 'NEW' },
-    { path: '/analytics',           icon: BarChart3,       label: '数据分析',  adminOnly: false },
+    { path: '/shipments',           icon: Ship,            label: '货件通道',  adminOnly: false, badge: 'NEW', internalOnly: true },
+    { path: '/analytics',           icon: BarChart3,       label: '数据分析',  adminOnly: false, internalOnly: true },
     { path: '/resources',           icon: BookOpen,        label: '资料库',    adminOnly: false },
-    { path: '/training',            icon: GraduationCap,   label: '培训中心',  adminOnly: false, end: true },
+    { path: '/training',            icon: GraduationCap,   label: '培训中心',  adminOnly: false, end: true, internalOnly: true },
     // ── 仅管理员可见 ──
     { path: '/training/admin',      icon: GraduationCap,   label: '培训管理',  adminOnly: true },
     { path: '/users',               icon: Users,           label: '用户管理',  adminOnly: true },

@@ -1,5 +1,5 @@
 // src/components/WorkflowPanel.jsx
-// 嵌入 CaseDetailPage 使用：<WorkflowPanel caseId={id} userRole={currentUser?.role?.name} />
+// 嵌入 CaseDetailPage 使用：<WorkflowPanel caseId={id} userRole={user?.role} />（前端 user.role 是角色名字符串）
 
 import { useState, useEffect, useCallback } from 'react';
 import {

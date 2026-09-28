@@ -476,7 +476,8 @@ const CaseDetailPage = () => {
             </div>
           </div>
 
-          {allowedTransitions.length > 0 && (
+          {/* 状态变更：后端仅内部角色 */}
+          {isInternal(user) && allowedTransitions.length > 0 && (
             <>
               <div className="mb-3">
                 <label className="block text-sm text-gray-500 mb-1">变更原因（可选）</label>
@@ -508,7 +509,8 @@ const CaseDetailPage = () => {
           )}
         </div>
 
-        {/* 案件指派 */}
+        {/* 案件指派：后端仅内部角色 */}
+        {isInternal(user) && (
         <div className="bg-white border border-gray-200 rounded-xl p-5">
           <h3 className="font-semibold text-gtc-navy mb-4 flex items-center gap-2">
             <UserPlus className="w-5 h-5" /> 案件指派
@@ -560,6 +562,7 @@ const CaseDetailPage = () => {
             确认指派
           </button>
         </div>
+        )}
 
         {/* 人工编辑结果 */}
         <div className="bg-white border border-gray-200 rounded-xl p-5">
@@ -1269,6 +1272,8 @@ const CaseDetailPage = () => {
                         </div>
                       </div>
                       <div className="flex items-center gap-1">
+                        {/* 预处理、分类抽取：后端仅内部角色 */}
+                        {isInternal(user) && (<>
                         <button onClick={() => handlePreprocess(file.id)} disabled={processing}
                           className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg disabled:opacity-50" title="预处理">
                           <RefreshCw className={`w-4 h-4 ${processing ? 'animate-spin' : ''}`} />
@@ -1277,14 +1282,18 @@ const CaseDetailPage = () => {
                           className="p-2 text-gray-500 hover:text-purple-600 hover:bg-purple-50 rounded-lg disabled:opacity-50" title="分类抽取">
                           <Brain className="w-4 h-4" />
                         </button>
+                        </>)}
                         <button onClick={() => handleFileDownload(file.id, file.file_name)}
                           className="p-2 text-gray-500 hover:text-gtc-navy hover:bg-gray-100 rounded-lg" title="下载">
                           <Download className="w-4 h-4" />
                         </button>
+                        {/* 删除文件：客户不能删（证据链要留痕），后端仅内部角色 */}
+                        {isInternal(user) && (
                         <button onClick={() => handleFileDelete(file.id)}
                           className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg" title="删除">
                           <Trash2 className="w-4 h-4" />
                         </button>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -1349,7 +1358,9 @@ const CaseDetailPage = () => {
               )}
               {renderSavedRiskAnalysis()}
               {renderSavedPetition()}
-              <div className={`grid grid-cols-1 ${isInternal(user) ? 'md:grid-cols-3' : 'md:grid-cols-1'} gap-4`}>
+              {/* 分析师风险分析、申诉书、UFLPA 扫描：后端均仅内部角色；客户只看已保存的结果 */}
+              {isInternal(user) && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <button onClick={handleAnalyze} disabled={analyzing}
                   className="bg-blue-500 text-white p-4 rounded-xl flex items-center justify-center gap-2 hover:bg-blue-600 disabled:opacity-50">
                   {analyzing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Brain className="w-5 h-5" />}
@@ -1371,6 +1382,7 @@ const CaseDetailPage = () => {
                 </button>
                 )}
               </div>
+              )}
 
               {renderScanResult()}
 
@@ -1406,7 +1418,7 @@ const CaseDetailPage = () => {
           {activeTab === 'workflow' && (
            <WorkflowPanel
              caseId={parseInt(id)}
-             userRole={user?.role?.name}
+             userRole={user?.role}
            />
          )}
           {activeTab === 'submission' && (
